@@ -1,0 +1,36 @@
+/* 智慧食安管理系统 - 样式补充 */
+
+/* 滚动条美化 */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #ccc;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #999;
+}
+
+/* 选中文字颜色 */
+::selection {
+  background: #1a4a7a;
+  color: #fff;
+}
+
+/* 打印优化 */
+@media print {
+  .sidebar, .header, .filter-bar, .btn, .modal-overlay, .toggle-sidebar {
+    display: none !important;
+  }
+  .main {
+    margin-left: 0 !important;
+  }
+  .card {
+    break-inside: avoid;
+  }
+}

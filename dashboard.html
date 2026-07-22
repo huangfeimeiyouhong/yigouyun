@@ -1,0 +1,2366 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>智慧食安管理系统</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: "Microsoft YaHei", "PingFang SC", "Helvetica Neue", Arial, sans-serif;
+      background: #f5f7fa;
+      color: #333;
+      font-size: 14px;
+    }
+    .app-layout {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* ===== 左侧导航 ===== */
+    .sidebar {
+      width: 220px;
+      background: #1a3a5c;
+      color: #fff;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      transition: width 0.3s;
+      position: fixed;
+      height: 100vh;
+      z-index: 100;
+    }
+    .sidebar.collapsed {
+      width: 60px;
+    }
+    .sidebar-header {
+      height: 60px;
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      gap: 10px;
+    }
+    .sidebar-header .icon {
+      width: 32px;
+      height: 32px;
+      background: rgba(255,255,255,0.12);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+    .sidebar-header .title {
+      font-size: 15px;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+    }
+    .sidebar.collapsed .sidebar-header .title {
+      display: none;
+    }
+    .nav-menu {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px 0;
+    }
+    .nav-item {
+      display: flex;
+      align-items: center;
+      padding: 12px 16px;
+      cursor: pointer;
+      transition: background 0.2s;
+      color: rgba(255,255,255,0.75);
+      gap: 12px;
+      border-left: 3px solid transparent;
+    }
+    .nav-item:hover {
+      background: rgba(255,255,255,0.06);
+      color: #fff;
+    }
+    .nav-item.active {
+      background: rgba(255,255,255,0.1);
+      color: #fff;
+      border-left-color: #4a9eff;
+    }
+    .nav-item .nav-icon {
+      width: 20px;
+      text-align: center;
+      flex-shrink: 0;
+      font-size: 16px;
+    }
+    .nav-item .nav-label {
+      white-space: nowrap;
+      overflow: hidden;
+      font-size: 13px;
+    }
+    .sidebar.collapsed .nav-item .nav-label {
+      display: none;
+    }
+    .sidebar-footer {
+      padding: 12px 16px;
+      border-top: 1px solid rgba(255,255,255,0.08);
+      font-size: 12px;
+      color: rgba(255,255,255,0.4);
+      text-align: center;
+    }
+    .sidebar.collapsed .sidebar-footer {
+      display: none;
+    }
+    .toggle-sidebar {
+      position: absolute;
+      right: -12px;
+      top: 70px;
+      width: 24px;
+      height: 24px;
+      background: #1a3a5c;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 10px;
+      color: #fff;
+      border: 1px solid rgba(255,255,255,0.2);
+      z-index: 101;
+    }
+
+    /* ===== 主内容区 ===== */
+    .main {
+      flex: 1;
+      margin-left: 220px;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+    .main.expanded {
+      margin-left: 60px;
+    }
+    .header {
+      height: 56px;
+      background: #fff;
+      border-bottom: 1px solid #e8e8e8;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .breadcrumb {
+      font-size: 14px;
+      color: #666;
+    }
+    .breadcrumb span:last-child {
+      color: #1a3a5c;
+      font-weight: 500;
+    }
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+    .header-icon-btn {
+      position: relative;
+      cursor: pointer;
+      font-size: 18px;
+      color: #666;
+      padding: 4px;
+    }
+    .header-icon-btn:hover { color: #1a3a5c; }
+    .header-badge {
+      position: absolute;
+      top: -2px;
+      right: -2px;
+      width: 16px;
+      height: 16px;
+      background: #ff4d4f;
+      color: #fff;
+      font-size: 10px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+    }
+    .user-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: #1a3a5c;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+    }
+    .user-name {
+      font-size: 13px;
+      color: #333;
+    }
+    .user-dropdown {
+      position: absolute;
+      top: 48px;
+      right: 16px;
+      background: #fff;
+      border: 1px solid #e8e8e8;
+      border-radius: 4px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      display: none;
+      min-width: 140px;
+      z-index: 60;
+    }
+    .user-dropdown.show { display: block; }
+    .user-dropdown-item {
+      padding: 10px 16px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .user-dropdown-item:hover { background: #f5f7fa; }
+
+    .content {
+      padding: 20px 24px;
+      flex: 1;
+    }
+
+    /* ===== 通用卡片 ===== */
+    .card {
+      background: #fff;
+      border-radius: 4px;
+      border: 1px solid #e8e8e8;
+      margin-bottom: 16px;
+    }
+    .card-header {
+      padding: 14px 20px;
+      border-bottom: 1px solid #f0f0f0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .card-title {
+      font-size: 15px;
+      font-weight: 500;
+      color: #1a1a1a;
+    }
+    .card-body {
+      padding: 20px;
+    }
+    .card-tools {
+      display: flex;
+      gap: 8px;
+    }
+
+    /* ===== 按钮 ===== */
+    .btn {
+      padding: 6px 16px;
+      border-radius: 4px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: 1px solid transparent;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .btn-primary {
+      background: #1a4a7a;
+      color: #fff;
+      border-color: #1a4a7a;
+    }
+    .btn-primary:hover { background: #133a61; }
+    .btn-default {
+      background: #fff;
+      color: #666;
+      border-color: #d9d9d9;
+    }
+    .btn-default:hover { border-color: #1a4a7a; color: #1a4a7a; }
+    .btn-danger {
+      background: #fff;
+      color: #ff4d4f;
+      border-color: #ff4d4f;
+    }
+    .btn-danger:hover { background: #fff2f0; }
+    .btn-sm { padding: 4px 12px; font-size: 12px; }
+    .btn-success { background: #52c41a; color: #fff; border-color: #52c41a; }
+    .btn-success:hover { background: #389e0d; }
+    .btn-warning { background: #faad14; color: #fff; border-color: #faad14; }
+    .btn-warning:hover { background: #d48806; }
+
+    /* ===== 表格 ===== */
+    .table-wrap { overflow-x: auto; }
+    .table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    .table th {
+      background: #fafafa;
+      padding: 10px 12px;
+      text-align: left;
+      font-weight: 500;
+      color: #666;
+      border-bottom: 1px solid #f0f0f0;
+      white-space: nowrap;
+    }
+    .table td {
+      padding: 10px 12px;
+      border-bottom: 1px solid #f0f0f0;
+      color: #333;
+    }
+    .table tr:hover td { background: #fafafa; }
+    .table tr:last-child td { border-bottom: none; }
+
+    /* ===== 标签 ===== */
+    .tag {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+    .tag-green { background: #f6ffed; color: #389e0d; border: 1px solid #b7eb8f; }
+    .tag-red { background: #fff2f0; color: #ff4d4f; border: 1px solid #ffccc7; }
+    .tag-orange { background: #fff7e6; color: #d48806; border: 1px solid #ffd591; }
+    .tag-blue { background: #e6f7ff; color: #1a4a7a; border: 1px solid #91d5ff; }
+    .tag-gray { background: #f5f5f5; color: #999; border: 1px solid #d9d9d9; }
+
+    /* ===== 状态指示点 ===== */
+    .status-dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-right: 4px;
+    }
+    .status-dot.online { background: #52c41a; }
+    .status-dot.offline { background: #999; }
+    .status-dot.warning { background: #faad14; }
+    .status-dot.error { background: #ff4d4f; }
+
+    /* ===== Toast 提示 ===== */
+    .toast-container {
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      pointer-events: none;
+    }
+    .toast {
+      min-width: 240px;
+      max-width: 360px;
+      background: #fff;
+      border-radius: 4px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+      padding: 12px 16px 12px 14px;
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      font-size: 13px;
+      color: #333;
+      border-left: 3px solid #1a4a7a;
+      animation: toastIn 0.25s ease-out;
+      pointer-events: auto;
+    }
+    .toast.success { border-left-color: #52c41a; }
+    .toast.error { border-left-color: #ff4d4f; }
+    .toast.warning { border-left-color: #faad14; }
+    .toast.info { border-left-color: #1a4a7a; }
+    .toast .toast-icon {
+      flex-shrink: 0;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 12px;
+      font-weight: 600;
+      line-height: 1;
+    }
+    .toast.success .toast-icon { background: #52c41a; }
+    .toast.error .toast-icon { background: #ff4d4f; }
+    .toast.warning .toast-icon { background: #faad14; }
+    .toast.info .toast-icon { background: #1a4a7a; }
+    .toast .toast-content { flex: 1; line-height: 1.5; }
+    .toast.fade-out { animation: toastOut 0.25s ease-in forwards; }
+    @keyframes toastIn {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+    @keyframes toastOut {
+      from { transform: translateX(0); opacity: 1; }
+      to { transform: translateX(100%); opacity: 0; }
+    }
+
+    /* ===== 自定义确认弹窗 ===== */
+    .confirm-dialog .modal {
+      max-width: 400px;
+    }
+    .confirm-dialog .confirm-icon {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      margin: 0 auto 16px;
+    }
+    .confirm-dialog .confirm-icon.warning { background: #fff7e6; color: #faad14; }
+    .confirm-dialog .confirm-icon.danger { background: #fff2f0; color: #ff4d4f; }
+    .confirm-dialog .confirm-icon.info { background: #e6f7ff; color: #1a4a7a; }
+    .confirm-dialog .confirm-title {
+      font-size: 16px;
+      font-weight: 500;
+      color: #1a1a1a;
+      text-align: center;
+      margin-bottom: 8px;
+    }
+    .confirm-dialog .confirm-msg {
+      font-size: 13px;
+      color: #666;
+      text-align: center;
+      line-height: 1.6;
+      margin-bottom: 4px;
+    }
+
+    /* ===== 搜索/筛选栏 ===== */
+    .filter-bar {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+    .filter-bar input, .filter-bar select {
+      padding: 6px 10px;
+      border: 1px solid #d9d9d9;
+      border-radius: 4px;
+      font-size: 13px;
+      outline: none;
+    }
+    .filter-bar input:focus, .filter-bar select:focus { border-color: #1a4a7a; }
+    .filter-bar input { min-width: 200px; }
+
+    /* ===== 分页 ===== */
+    .pagination {
+      display: flex;
+      justify-content: flex-end;
+      gap: 4px;
+      margin-top: 16px;
+    }
+    .pagination button {
+      padding: 5px 12px;
+      border: 1px solid #d9d9d9;
+      background: #fff;
+      cursor: pointer;
+      border-radius: 4px;
+      font-size: 13px;
+    }
+    .pagination button:hover { border-color: #1a4a7a; color: #1a4a7a; }
+    .pagination button.active { background: #1a4a7a; color: #fff; border-color: #1a4a7a; }
+    .pagination button:disabled { cursor: not-allowed; color: #bbb; }
+
+    /* ===== 数字统计卡片 ===== */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    .stat-card {
+      background: #fff;
+      border-radius: 4px;
+      border: 1px solid #e8e8e8;
+      padding: 20px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .stat-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      flex-shrink: 0;
+    }
+    .stat-icon.blue { background: #e6f7ff; color: #1a4a7a; }
+    .stat-icon.green { background: #f6ffed; color: #389e0d; }
+    .stat-icon.red { background: #fff2f0; color: #ff4d4f; }
+    .stat-icon.orange { background: #fff7e6; color: #d48806; }
+    .stat-info .stat-num { font-size: 24px; font-weight: 600; color: #1a1a1a; line-height: 1.2; }
+    .stat-info .stat-label { font-size: 13px; color: #999; margin-top: 2px; }
+    .stat-info .stat-trend { font-size: 12px; color: #999; margin-top: 4px; }
+    .stat-trend.up { color: #52c41a; }
+    .stat-trend.down { color: #ff4d4f; }
+
+    /* ===== 模态框 ===== */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.45);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 200;
+    }
+    .modal-overlay.show { display: flex; }
+    .modal {
+      background: #fff;
+      border-radius: 4px;
+      width: 90%;
+      max-width: 560px;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+    .modal-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid #f0f0f0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .modal-title { font-size: 16px; font-weight: 500; }
+    .modal-close { cursor: pointer; font-size: 18px; color: #999; }
+    .modal-close:hover { color: #333; }
+    .modal-body { padding: 20px; }
+    .modal-footer {
+      padding: 12px 20px;
+      border-top: 1px solid #f0f0f0;
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+    .form-row { display: flex; gap: 16px; margin-bottom: 16px; }
+    .form-col { flex: 1; }
+    .form-label { display: block; font-size: 13px; color: #333; margin-bottom: 6px; }
+    .form-label .required { color: #ff4d4f; margin-left: 2px; }
+    .form-input, .form-select, .form-textarea {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid #d9d9d9;
+      border-radius: 4px;
+      font-size: 13px;
+      outline: none;
+    }
+    .form-input:focus, .form-select:focus, .form-textarea:focus { border-color: #1a4a7a; }
+    .form-textarea { resize: vertical; min-height: 80px; }
+
+    /* ===== 响应式 ===== */
+    @media (max-width: 1200px) {
+      .stats-row { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 768px) {
+      .sidebar { width: 60px; }
+      .sidebar .sidebar-header .title, .sidebar .nav-item .nav-label, .sidebar .sidebar-footer { display: none; }
+      .main { margin-left: 60px; }
+      .stats-row { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    /* ===== 隐藏 ===== */
+    .hidden { display: none !important; }
+
+    /* ===== 详情列表 ===== */
+    .detail-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px 24px; }
+    .detail-item { display: flex; }
+    .detail-item .label { color: #999; width: 100px; flex-shrink: 0; font-size: 13px; }
+    .detail-item .value { color: #333; font-size: 13px; }
+
+    /* ===== 监控画面 ===== */
+    .monitor-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+    .monitor-card { background: #1a1a1a; border-radius: 4px; overflow: hidden; }
+    .monitor-card .monitor-header { padding: 8px 12px; display: flex; justify-content: space-between; align-items: center; color: #fff; font-size: 13px; background: #2a2a2a; }
+    .monitor-card .monitor-body { height: 240px; display: flex; align-items: center; justify-content: center; color: #666; font-size: 13px; position: relative; }
+    .monitor-card .monitor-placeholder { text-align: center; }
+    .monitor-card .monitor-placeholder .icon { font-size: 48px; margin-bottom: 8px; color: #444; }
+    .monitor-status { display: flex; align-items: center; gap: 4px; }
+
+    /* ===== 两栏布局 ===== */
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .two-col .card { margin-bottom: 0; }
+
+    /* ===== 预警色块 ===== */
+    .alert-banner {
+      padding: 10px 16px;
+      border-radius: 4px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+    }
+    .alert-banner.high { background: #fff2f0; border: 1px solid #ffccc7; color: #ff4d4f; }
+    .alert-banner.medium { background: #fff7e6; border: 1px solid #ffd591; color: #d48806; }
+    .alert-banner.low { background: #e6f7ff; border: 1px solid #91d5ff; color: #1a4a7a; }
+
+    /* ===== 分页条（带统计） ===== */
+    .pagination-bar { display: flex; justify-content: space-between; align-items: center; padding: 12px 0 0; }
+    .pagination-info { font-size: 13px; color: #666; }
+
+    /* ===== 人脸照片 ===== */
+    .face-thumb { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; background: #f0f0f0; }
+    .face-placeholder { width: 36px; height: 36px; border-radius: 50%; background: #1a3a5c; color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 13px; }
+    .face-preview { width: 120px; height: 150px; border-radius: 4px; object-fit: cover; border: 1px solid #d9d9d9; }
+    .face-preview-box { margin-top: 8px; }
+    .upload-row { display: flex; align-items: center; gap: 12px; }
+    .upload-row input[type="file"] { flex: 1; }
+  </style>
+</head>
+<body>
+  <div class="app-layout">
+    <!-- 左侧导航 -->
+    <div class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="icon">&#127858;</div>
+        <div class="title">智慧食安</div>
+      </div>
+      <div class="toggle-sidebar" id="toggleSidebar">&lt;</div>
+      <div class="nav-menu" id="navMenu"></div>
+      <div class="sidebar-footer">v1.0.0 | 信息中心</div>
+    </div>
+
+    <!-- 主内容区 -->
+    <div class="main" id="main">
+      <div class="header">
+        <div class="header-left">
+          <div class="breadcrumb" id="breadcrumb">首页 / 工作台</div>
+        </div>
+        <div class="header-right">
+          <div class="header-icon-btn" id="noticeBtn">
+            &#128276;
+            <span class="header-badge" id="noticeBadge">3</span>
+          </div>
+          <div class="user-info" id="userInfo">
+            <div class="user-avatar" id="userAvatar"></div>
+            <div class="user-name" id="userName"></div>
+            <div class="user-dropdown" id="userDropdown">
+              <div class="user-dropdown-item" onclick="showToast('个人资料功能开发中', 'info')">个人资料</div>
+              <div class="user-dropdown-item" onclick="logout()">退出登录</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="content" id="content"></div>
+    </div>
+  </div>
+
+  <!-- 通用模态框 -->
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal" id="modal">
+      <div class="modal-header">
+        <div class="modal-title" id="modalTitle">标题</div>
+        <div class="modal-close" onclick="closeModal()">&times;</div>
+      </div>
+      <div class="modal-body" id="modalBody"></div>
+      <div class="modal-footer" id="modalFooter"></div>
+    </div>
+  </div>
+
+  <!-- 自定义确认弹窗 -->
+  <div class="modal-overlay confirm-dialog" id="confirmOverlay">
+    <div class="modal" style="max-width:380px">
+      <div class="modal-body" style="padding:28px 24px 8px">
+        <div class="confirm-icon" id="confirmIcon">!</div>
+        <div class="confirm-title" id="confirmTitle">提示</div>
+        <div class="confirm-msg" id="confirmMsg"></div>
+      </div>
+      <div class="modal-footer" style="justify-content:center;border-top:none;padding:16px 24px 24px">
+        <button class="btn btn-default" id="confirmCancelBtn">取消</button>
+        <button class="btn btn-primary" id="confirmOkBtn">确定</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast 容器 -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script src="js/data.js"></script>
+  <script>
+    // ===================== 初始化 =====================
+    DataStore.init();
+    const currentUser = DataStore.get('currentUser');
+    if (!currentUser) { window.location.href = 'index.html'; }
+
+    const roleConfig = {
+      admin: { name: '平台管理员', menus: [
+        { key: 'dashboard', label: '工作台', icon: '&#128202;' },
+        { key: 'devices', label: '物联设备', icon: '&#128268;' },
+        { key: 'alerts', label: '异常预警', icon: '&#128680;' },
+        { key: 'samples', label: '留样管理', icon: '&#129379;' },
+        { key: 'personnel', label: '人员管理', icon: '&#128100;' },
+        { key: 'checks', label: '晨午晚检', icon: '&#129658;' },
+        { key: 'access', label: '门禁管理', icon: '&#128275;' },
+        { key: 'monitor', label: '视频监控', icon: '&#127909;' },
+        { key: 'roles', label: '角色管理', icon: '&#128101;' },
+        { key: 'system', label: '系统管理', icon: '&#9881;' },
+      ]},
+      canteenAdmin: { name: '食堂管理员', menus: [
+        { key: 'dashboard', label: '工作台', icon: '&#128202;' },
+        { key: 'devices', label: '物联设备', icon: '&#128268;' },
+        { key: 'alerts', label: '异常预警', icon: '&#128680;' },
+        { key: 'samples', label: '留样管理', icon: '&#129379;' },
+        { key: 'personnel', label: '人员管理', icon: '&#128100;' },
+        { key: 'checks', label: '晨午晚检', icon: '&#129658;' },
+        { key: 'access', label: '门禁管理', icon: '&#128275;' },
+        { key: 'monitor', label: '视频监控', icon: '&#127909;' },
+      ]},
+      staff: { name: '从业人员', menus: [
+        { key: 'dashboard', label: '工作台', icon: '&#128202;' },
+        { key: 'samples', label: '我的留样', icon: '&#129379;' },
+        { key: 'checks', label: '我的检查', icon: '&#129658;' },
+        { key: 'personnel', label: '个人信息', icon: '&#128100;' },
+      ]},
+      inspector: { name: '监管用户', menus: [
+        { key: 'dashboard', label: '工作台', icon: '&#128202;' },
+        { key: 'monitor', label: '视频监控', icon: '&#127909;' },
+        { key: 'dataView', label: '食安数据', icon: '&#128200;' },
+      ]}
+    };
+
+    let currentPage = 'dashboard';
+
+    // ===================== 导航渲染 =====================
+    function renderNav() {
+      const cfg = roleConfig[currentUser.role] || roleConfig.admin;
+      const menu = document.getElementById('navMenu');
+      menu.innerHTML = cfg.menus.map(m => `
+        <div class="nav-item ${m.key === currentPage ? 'active' : ''}" data-page="${m.key}" onclick="navigate('${m.key}')">
+          <div class="nav-icon">${m.icon}</div>
+          <div class="nav-label">${m.label}</div>
+        </div>
+      `).join('');
+      document.getElementById('userName').textContent = currentUser.realName;
+      document.getElementById('userAvatar').textContent = currentUser.realName.charAt(0);
+    }
+
+    function navigate(page) {
+      currentPage = page;
+      renderNav();
+      renderContent();
+    }
+
+    document.getElementById('toggleSidebar').addEventListener('click', () => {
+      document.getElementById('sidebar').classList.toggle('collapsed');
+      document.getElementById('main').classList.toggle('expanded');
+      const btn = document.getElementById('toggleSidebar');
+      btn.textContent = btn.textContent === '<' ? '>' : '<';
+    });
+
+    document.getElementById('userInfo').addEventListener('click', () => {
+      document.getElementById('userDropdown').classList.toggle('show');
+    });
+    document.addEventListener('click', e => {
+      if (!e.target.closest('#userInfo')) document.getElementById('userDropdown').classList.remove('show');
+    });
+
+    function logout() {
+      localStorage.removeItem('smartFoodSafety_currentUser');
+      window.location.href = 'index.html';
+    }
+
+    // ===================== 面包屑 =====================
+    function setBreadcrumb(pages) {
+      document.getElementById('breadcrumb').innerHTML = pages.map((p, i) =>
+        i === pages.length - 1 ? `<span>${p}</span>` : `<span style="color:#999">${p}</span> <span style="color:#ccc;margin:0 4px">/</span> `
+      ).join('');
+    }
+
+    // ===================== 模态框 =====================
+    function openModal(title, bodyHtml, footerHtml) {
+      document.getElementById('modalTitle').textContent = title;
+      document.getElementById('modalBody').innerHTML = bodyHtml;
+      document.getElementById('modalFooter').innerHTML = footerHtml || '';
+      document.getElementById('modalOverlay').classList.add('show');
+    }
+    function closeModal() {
+      document.getElementById('modalOverlay').classList.remove('show');
+    }
+    document.getElementById('modalOverlay').addEventListener('click', e => {
+      if (e.target === document.getElementById('modalOverlay')) closeModal();
+    });
+
+    // ===================== 自定义 Toast 提示 =====================
+    function showToast(message, type = 'info', duration = 2500) {
+      const container = document.getElementById('toastContainer');
+      const icons = { success: '✓', error: '×', warning: '!', info: 'i' };
+      const toast = document.createElement('div');
+      toast.className = 'toast ' + type;
+      toast.innerHTML = `<div class="toast-icon">${icons[type] || 'i'}</div><div class="toast-content">${message}</div>`;
+      container.appendChild(toast);
+      setTimeout(() => {
+        toast.classList.add('fade-out');
+        setTimeout(() => toast.remove(), 250);
+      }, duration);
+    }
+
+    // ===================== 自定义确认弹窗 =====================
+    function showConfirm(message, options = {}) {
+      return new Promise(resolve => {
+        const { title = '操作确认', type = 'warning', okText = '确定', cancelText = '取消', danger = false } = options;
+        const iconMap = { warning: '!', danger: '!', info: '?' };
+        const iconTypeMap = { warning: 'warning', danger: 'danger', info: 'info' };
+        document.getElementById('confirmTitle').textContent = title;
+        document.getElementById('confirmMsg').textContent = message;
+        const icon = document.getElementById('confirmIcon');
+        icon.textContent = iconMap[type] || '!';
+        icon.className = 'confirm-icon ' + (iconTypeMap[type] || 'warning');
+        const okBtn = document.getElementById('confirmOkBtn');
+        const cancelBtn = document.getElementById('confirmCancelBtn');
+        okBtn.textContent = okText;
+        cancelBtn.textContent = cancelText;
+        okBtn.className = 'btn ' + (danger ? 'btn-danger' : 'btn-primary');
+        document.getElementById('confirmOverlay').classList.add('show');
+
+        const cleanup = (result) => {
+          document.getElementById('confirmOverlay').classList.remove('show');
+          okBtn.onclick = null;
+          cancelBtn.onclick = null;
+          document.getElementById('confirmOverlay').onclick = null;
+          resolve(result);
+        };
+        okBtn.onclick = () => cleanup(true);
+        cancelBtn.onclick = () => cleanup(false);
+        document.getElementById('confirmOverlay').onclick = (e) => {
+          if (e.target === document.getElementById('confirmOverlay')) cleanup(false);
+        };
+      });
+    }
+
+    // ===================== 通用表格渲染 =====================
+    function renderTable(headers, rows, emptyText = '暂无数据') {
+      if (!rows || rows.length === 0) {
+        return `<div style="text-align:center;padding:40px;color:#999;font-size:13px">${emptyText}</div>`;
+      }
+      return `<div class="table-wrap"><table class="table"><thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+    }
+
+    // ===================== 分页 =====================
+    function renderPagination(current, total, onPage) {
+      if (total <= 1) return '';
+      let html = '<div class="pagination">';
+      html += `<button ${current === 1 ? 'disabled' : ''} onclick="${onPage}(${current - 1})">上一页</button>`;
+      for (let i = 1; i <= total; i++) {
+        if (i === 1 || i === total || (i >= current - 1 && i <= current + 1)) {
+          html += `<button class="${i === current ? 'active' : ''}" onclick="${onPage}(${i})">${i}</button>`;
+        } else if (i === current - 2 || i === current + 2) {
+          html += `<button disabled>...</button>`;
+        }
+      }
+      html += `<button ${current === total ? 'disabled' : ''} onclick="${onPage}(${current + 1})">下一页</button>`;
+      html += '</div>';
+      return html;
+    }
+
+    // ===================== 分页条（带统计+页码信息） =====================
+    function renderPaginationBar(state, onPage, totalCount) {
+      const totalPages = Math.max(1, Math.ceil(totalCount / state.pageSize));
+      let html = '<div class="pagination-bar">';
+      html += '<div class="pagination-info">共 ' + totalCount + ' 条 / 第 ' + state.currentPage + ' 页 / 共 ' + totalPages + ' 页</div>';
+      if (totalPages > 1) {
+        html += '<div class="pagination">';
+        html += '<button' + (state.currentPage === 1 ? ' disabled' : '') + ' onclick="' + onPage + '(' + (state.currentPage - 1) + ')">上一页</button>';
+        for (var i = 1; i <= totalPages; i++) {
+          if (i === 1 || i === totalPages || (i >= state.currentPage - 1 && i <= state.currentPage + 1)) {
+            html += '<button class="' + (i === state.currentPage ? 'active' : '') + '" onclick="' + onPage + '(' + i + ')">' + i + '</button>';
+          } else if (i === state.currentPage - 2 || i === state.currentPage + 2) {
+            html += '<button disabled>...</button>';
+          }
+        }
+        html += '<button' + (state.currentPage === totalPages ? ' disabled' : '') + ' onclick="' + onPage + '(' + (state.currentPage + 1) + ')">下一页</button>';
+        html += '</div>';
+      }
+      html += '</div>';
+      return html;
+    }
+
+    // ===================== 各页面渲染 =====================
+    function renderContent() {
+      const content = document.getElementById('content');
+      content.innerHTML = '';
+
+      switch (currentPage) {
+        case 'dashboard': renderDashboard(content); break;
+        case 'devices': renderDevices(content); break;
+        case 'alerts': renderAlerts(content); break;
+        case 'samples': renderSamples(content); break;
+        case 'personnel': renderPersonnel(content); break;
+        case 'checks': renderChecks(content); break;
+        case 'access': renderAccess(content); break;
+        case 'monitor': renderMonitor(content); break;
+        case 'dataView': renderDataView(content); break;
+        case 'roles': renderRoles(content); break;
+        case 'system': renderSystem(content); break;
+        default: content.innerHTML = '<div style="text-align:center;padding:80px;color:#999">功能开发中</div>';
+      }
+    }
+
+    // ===== 工作台 =====
+    function renderDashboard(el) {
+      setBreadcrumb(['首页', '工作台']);
+      const myCanteen = currentUser.canteenId ? DB.canteens.find(c => c.id === currentUser.canteenId) : null;
+      const personnelCount = currentUser.canteenId
+        ? DB.personnel.filter(p => p.canteenId === currentUser.canteenId && p.status).length
+        : DB.personnel.filter(p => p.status).length;
+      const deviceCount = currentUser.canteenId
+        ? DB.devices.filter(d => d.canteenId === currentUser.canteenId).length
+        : DB.devices.length;
+      const alertCount = currentUser.canteenId
+        ? DB.alerts.filter(a => a.canteenId === currentUser.canteenId && a.status === 'pending').length
+        : DB.alerts.filter(a => a.status === 'pending').length;
+      const sampleCount = currentUser.canteenId
+        ? DB.samples.filter(s => s.canteenId === currentUser.canteenId && s.status === '正常').length
+        : DB.samples.filter(s => s.status === '正常').length;
+
+      el.innerHTML = `
+        <div class="stats-row">
+          <div class="stat-card">
+            <div class="stat-icon blue">&#128100;</div>
+            <div class="stat-info">
+              <div class="stat-num">${personnelCount}</div>
+              <div class="stat-label">从业人员</div>
+              <div class="stat-trend">${DB.personnel.filter(p => p.healthStatus === '即将过期').length} 人健康证即将到期</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon green">&#128268;</div>
+            <div class="stat-info">
+              <div class="stat-num">${deviceCount}</div>
+              <div class="stat-label">物联设备</div>
+              <div class="stat-trend">${DB.devices.filter(d => d.status === 'offline').length} 台离线</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon red">&#128680;</div>
+            <div class="stat-info">
+              <div class="stat-num">${alertCount}</div>
+              <div class="stat-label">待处理预警</div>
+              <div class="stat-trend">今日新增 ${alertCount} 条</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon orange">&#129379;</div>
+            <div class="stat-info">
+              <div class="stat-num">${sampleCount}</div>
+              <div class="stat-label">在库留样</div>
+              <div class="stat-trend">今日已录入</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="two-col">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">待办预警</div>
+              <a href="#" onclick="navigate('alerts');return false" style="font-size:13px;color:#1a4a7a">查看全部</a>
+            </div>
+            <div class="card-body">
+              ${renderAlertsPreview()}
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">系统公告</div>
+            </div>
+            <div class="card-body">
+              ${renderNotices()}
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">今日留样概览</div>
+            <a href="#" onclick="navigate('samples');return false" style="font-size:13px;color:#1a4a7a">查看全部</a>
+          </div>
+          <div class="card-body">
+            ${renderSamplePreview()}
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">设备状态概览</div>
+            <a href="#" onclick="navigate('devices');return false" style="font-size:13px;color:#1a4a7a">查看全部</a>
+          </div>
+          <div class="card-body">
+            ${renderDevicePreview()}
+          </div>
+        </div>
+      `;
+    }
+
+    function renderAlertsPreview() {
+      let list = currentUser.canteenId ? DB.alerts.filter(a => a.canteenId === currentUser.canteenId) : DB.alerts;
+      list = list.filter(a => a.status === 'pending').slice(0, 5);
+      if (list.length === 0) return '<div style="text-align:center;padding:20px;color:#999;font-size:13px">暂无待处理预警</div>';
+      return list.map(a => {
+        const levelClass = a.level === 'high' ? 'tag-red' : a.level === 'medium' ? 'tag-orange' : 'tag-blue';
+        const levelText = a.level === 'high' ? '高' : a.level === 'medium' ? '中' : '低';
+        return `<div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #f0f0f0">
+          <div>
+            <span class="tag ${levelClass}">${levelText}</span>
+            <span style="margin-left:8px;font-size:13px">${a.type}</span>
+            <div style="font-size:12px;color:#999;margin-top:4px">${a.location} · ${a.time}</div>
+          </div>
+          <span class="tag tag-red">待处理</span>
+        </div>`;
+      }).join('');
+    }
+
+    function renderNotices() {
+      return DB.notices.slice(0, 5).map(n => {
+        const typeClass = n.type === '重要' ? 'tag-orange' : n.type === '紧急' ? 'tag-red' : 'tag-blue';
+        return `<div style="padding:10px 0;border-bottom:1px solid #f0f0f0">
+          <div style="display:flex;gap:8px;align-items:center">
+            <span class="tag ${typeClass}">${n.type}</span>
+            <span style="font-size:13px">${n.title}</span>
+          </div>
+          <div style="font-size:12px;color:#999;margin-top:4px">${n.author} · ${n.date}</div>
+        </div>`;
+      }).join('');
+    }
+
+    function renderSamplePreview() {
+      let list = currentUser.canteenId ? DB.samples.filter(s => s.canteenId === currentUser.canteenId) : DB.samples;
+      list = list.slice(0, 5);
+      const headers = ['样品名称', '食堂', '餐次', '留样时间', '留样人', '状态'];
+      const rows = list.map(s => {
+        const canteen = DB.canteens.find(c => c.id === s.canteenId);
+        const statusTag = s.status === '正常' ? '<span class="tag tag-green">正常</span>' : '<span class="tag tag-gray">已销毁</span>';
+        return [s.name, canteen ? canteen.name : '-', s.mealType, s.sampleDate + ' ' + s.sampleTime, s.sampler, statusTag];
+      });
+      return renderTable(headers, rows);
+    }
+
+    function renderDevicePreview() {
+      let list = currentUser.canteenId ? DB.devices.filter(d => d.canteenId === currentUser.canteenId) : DB.devices;
+      list = list.slice(0, 5);
+      const headers = ['设备编号', '名称', '类型', '位置', '状态', '最后数据'];
+      const rows = list.map(d => {
+        const statusStr = d.status === 'online' ? '<span class="status-dot online"></span>在线' : d.status === 'warning' ? '<span class="status-dot warning"></span>告警' : '<span class="status-dot offline"></span>离线';
+        let dataStr = '-';
+        if (d.lastData) {
+          if (d.lastData.temperature !== undefined) dataStr = `${d.lastData.temperature}°C`;
+          else if (d.lastData.distance !== undefined) dataStr = `${d.lastData.distance}cm`;
+          else if (d.lastData.status) dataStr = d.lastData.status;
+        }
+        return [d.id, d.name, d.type, d.location, statusStr, dataStr + '<br><span style="font-size:12px;color:#999">' + d.lastUpdate + '</span>'];
+      });
+      return renderTable(headers, rows);
+    }
+
+    // ===== 物联设备 =====
+    function renderDevices(el) {
+      setBreadcrumb(['首页', '物联设备管理']);
+      let list = currentUser.canteenId ? DB.devices.filter(d => d.canteenId === currentUser.canteenId) : DB.devices;
+      window.devPageState = window.devPageState || { currentPage: 1, pageSize: 10 };
+      var state = window.devPageState;
+      var totalCount = list.length;
+      var paged = list.slice((state.currentPage - 1) * state.pageSize, state.currentPage * state.pageSize);
+      const headers = ['设备编号', '设备名称', '类型', '所属食堂', '安装位置', '状态', '最后数据', '操作'];
+      const rows = paged.map(d => {
+        const canteen = DB.canteens.find(c => c.id === d.canteenId);
+        const statusStr = d.status === 'online' ? '<span class="status-dot online"></span>在线' : d.status === 'warning' ? '<span class="status-dot warning"></span>告警' : '<span class="status-dot offline"></span>离线';
+        let dataStr = '-';
+        if (d.lastData) {
+          if (d.lastData.temperature !== undefined && d.lastData.humidity !== undefined) dataStr = `温度:${d.lastData.temperature}°C<br>湿度:${d.lastData.humidity}%`;
+          else if (d.lastData.temperature !== undefined) dataStr = `${d.lastData.temperature}°C`;
+          else if (d.lastData.distance !== undefined) dataStr = `离地:${d.lastData.distance}cm`;
+          else if (d.lastData.status) dataStr = d.lastData.status;
+          else if (d.lastData.duration) dataStr = `${d.lastData.duration}分钟`;
+        }
+        return [
+          d.id, d.name, d.type, canteen ? canteen.name : '-', d.location, statusStr,
+          dataStr + '<br><span style="font-size:12px;color:#999">' + d.lastUpdate + '</span>',
+          `<button class="btn btn-sm btn-default" onclick="showDeviceDetail('${d.id}')">详情</button>` +
+          ` <button class="btn btn-sm btn-primary" onclick="editDevice('${d.id}')">编辑</button>` +
+          ` <button class="btn btn-sm btn-danger" onclick="deleteDevice('${d.id}')">删除</button>`
+        ];
+      });
+
+      el.innerHTML = `
+        <div class="filter-bar">
+          <input type="text" id="devSearchInput" placeholder="搜索设备名称/编号" oninput="filterDeviceList()">
+          <select id="devTypeFilter" onchange="filterDeviceList()">
+            <option value="">全部类型</option>
+            <option>温湿度传感器</option>
+            <option>离地靠墙传感器</option>
+            <option>挡鼠板检测</option>
+            <option>消毒柜传感器</option>
+          </select>
+          <select id="devStatusFilter" onchange="filterDeviceList()">
+            <option value="">全部状态</option>
+            <option value="online">在线</option>
+            <option value="warning">告警</option>
+            <option value="offline">离线</option>
+          </select>
+          <button class="btn btn-primary" onclick="openDeviceModal()">+ 添加设备</button>
+        </div>
+        <div class="card">
+          <div class="card-body" id="devTableBody">
+            ${renderTable(headers, rows)}
+            ${renderPaginationBar(state, 'goToDevPage', totalCount)}
+          </div>
+        </div>
+      `;
+    }
+    window.goToDevPage = function(page) {
+      window.devPageState.currentPage = page;
+      renderDevices(document.getElementById('content'));
+    };
+
+    window.filterDeviceList = function() {
+      window.devPageState = window.devPageState || { currentPage: 1, pageSize: 10 };
+      window.devPageState.currentPage = 1;
+      const keyword = (document.getElementById('devSearchInput').value || '').trim().toLowerCase();
+      const typeFilter = document.getElementById('devTypeFilter').value;
+      const statusFilter = document.getElementById('devStatusFilter').value;
+      let list = currentUser.canteenId ? DB.devices.filter(d => d.canteenId === currentUser.canteenId) : DB.devices;
+      if (keyword) list = list.filter(d => d.id.toLowerCase().includes(keyword) || d.name.toLowerCase().includes(keyword));
+      if (typeFilter) list = list.filter(d => d.type === typeFilter);
+      if (statusFilter) list = list.filter(d => d.status === statusFilter);
+      var state = window.devPageState;
+      var totalCount = list.length;
+      var paged = list.slice((state.currentPage - 1) * state.pageSize, state.currentPage * state.pageSize);
+      const headers = ['设备编号', '设备名称', '类型', '所属食堂', '安装位置', '状态', '最后数据', '操作'];
+      const rows = paged.map(d => {
+        const canteen = DB.canteens.find(c => c.id === d.canteenId);
+        const statusStr = d.status === 'online' ? '<span class="status-dot online"></span>在线' : d.status === 'warning' ? '<span class="status-dot warning"></span>告警' : '<span class="status-dot offline"></span>离线';
+        let dataStr = '-';
+        if (d.lastData) {
+          if (d.lastData.temperature !== undefined && d.lastData.humidity !== undefined) dataStr = `温度:${d.lastData.temperature}°C<br>湿度:${d.lastData.humidity}%`;
+          else if (d.lastData.temperature !== undefined) dataStr = `${d.lastData.temperature}°C`;
+          else if (d.lastData.distance !== undefined) dataStr = `离地:${d.lastData.distance}cm`;
+          else if (d.lastData.status) dataStr = d.lastData.status;
+          else if (d.lastData.duration) dataStr = `${d.lastData.duration}分钟`;
+        }
+        return [d.id, d.name, d.type, canteen ? canteen.name : '-', d.location, statusStr,
+          dataStr + '<br><span style="font-size:12px;color:#999">' + d.lastUpdate + '</span>',
+          `<button class="btn btn-sm btn-default" onclick="showDeviceDetail('${d.id}')">详情</button>` +
+          ` <button class="btn btn-sm btn-primary" onclick="editDevice('${d.id}')">编辑</button>` +
+          ` <button class="btn btn-sm btn-danger" onclick="deleteDevice('${d.id}')">删除</button>`];
+      });
+      document.getElementById('devTableBody').innerHTML = renderTable(headers, rows) + renderPaginationBar(state, 'goToDevPage', totalCount);
+    };
+
+    const __editingDeviceId = { val: null };
+    window.openDeviceModal = function() {
+      __editingDeviceId.val = null;
+      const canteenOpts = DB.canteens.filter(c => c.status).map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+      openModal('添加设备', `
+        <div class="form-row">
+          <div class="form-col"><label class="form-label">设备编号<span class="required">*</span></label><input class="form-input" id="dId" placeholder="如：DEV009"></div>
+          <div class="form-col"><label class="form-label">设备名称<span class="required">*</span></label><input class="form-input" id="dName" placeholder="如：后厨温湿度-03"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-col"><label class="form-label">设备类型<span class="required">*</span></label><select class="form-select" id="dType"><option>温湿度传感器</option><option>离地靠墙传感器</option><option>挡鼠板检测</option><option>消毒柜传感器</option></select></div>
+          <div class="form-col"><label class="form-label">所属食堂<span class="required">*</span></label><select class="form-select" id="dCanteen">${canteenOpts}</select></div>
+        </div>
+        <div class="form-row">
+          <div class="form-col"><label class="form-label">安装位置<span class="required">*</span></label><input class="form-input" id="dLocation" placeholder="如：第一食堂后厨"></div>
+          <div class="form-col"><label class="form-label">设备状态</label><select class="form-select" id="dStatus"><option value="online">在线</option><option value="offline">离线</option><option value="warning">告警</option></select></div>
+        </div>
+      `, '<button class="btn btn-default" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveDevice()">保存</button>');
+    };
+
+    window.editDevice = function(id) {
+      const d = DB.devices.find(x => x.id === id);
+      if (!d) return;
+      __editingDeviceId.val = id;
+      const canteenOpts = DB.canteens.filter(c => c.status).map(c => `<option value="${c.id}" ${c.id === d.canteenId ? 'selected' : ''}>${c.name}</option>`).join('');
+      openModal('编辑设备', `
+        <div class="form-row">
+          <div class="form-col"><label class="form-label">设备编号</label><input class="form-input" id="dId" value="${d.id}" readonly style="background:#f5f5f5"></div>
+          <div class="form-col"><label class="form-label">设备名称<span class="required">*</span></label><input class="form-input" id="dName" value="${d.name}"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-col"><label class="form-label">设备类型<span class="required">*</span></label><select class="form-select" id="dType" readonly style="background:#f5f5f5"><option>${d.type}</option></select></div>
+          <div class="form-col"><label class="form-label">所属食堂</label><select class="form-select" id="dCanteen">${canteenOpts}</select></div>
+        </div>
+        <div class="form-row">
+          <div class="form-col"><label class="form-label">安装位置<span class="required">*</span></label><input class="form-input" id="dLocation" value="${d.location}"></div>
+          <div class="form-col"><label class="form-label">设备状态</label><select class="form-select" id="dStatus"><option value="online" ${d.status === 'online' ? 'selected' : ''}>在线</option><option value="offline" ${d.status === 'offline' ? 'selected' : ''}>离线</option><option value="warning" ${d.status === 'warning' ? 'selected' : ''}>告警</option></select></div>
+        </div>
+      `, '<button class="btn btn-default" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveDevice()">保存</button>');
+    };
+
+    window.saveDevice = function() {
+      const editId = __editingDeviceId.val;
+      const id = document.getElementById('dId').value.trim();
+      const name = document.getElementById('dName').value.trim();
+      const type = document.getElementById('dType').value;
+      const canteenId = parseInt(document.getElementById('dCanteen').value);
+      const location = document.getElementById('dLocation').value.trim();
+      const status = document.getElementById('dStatus').value;
+      if (!id || !name || !location) { showToast('请填写必填项', 'warning'); return; }
+      if (editId) {
+        const d = DB.devices.find(x => x.id === editId);
+        if (d) { d.name = name; d.canteenId = canteenId; d.location = location; d.status = status; }
+        DataStore.set('devices', DB.devices);
+        closeModal();
+        showToast('修改成功', 'success');
+      } else {
+        if (DB.devices.find(d => d.id === id)) { showToast('设备编号已存在', 'error'); return; }
+        DB.devices.push({
+          id, name, type, canteenId, location, status,
+          lastData: type === '温湿度传感器' ? { temperature: Math.round((20 + Math.random() * 8) * 10) / 10, humidity: Math.round((50 + Math.random() * 20) * 10) / 10 } : type === '离地靠墙传感器' ? { distance: Math.round((10 + Math.random() * 10) * 10) / 10 } : type === '挡鼠板检测' ? { status: '正常' } : { temperature: 85, duration: 30 },
+          lastUpdate: new Date().toISOString().slice(0, 19).replace('T', ' '),
+          installDate: new Date().toISOString().slice(0, 10)
+        });
+        DataStore.set('devices', DB.devices);
+        closeModal();
+        showToast('保存成功', 'success');
+      }
+      renderDevices(document.getElementById('content'));
+    };
+
+    window.deleteDevice = async function(id) {
+      if (!await showConfirm('确认删除设备 ' + id + ' ？', { title: '删除设备', type: 'danger', danger: true })) return;
+      const idx = DB.devices.findIndex(d => d.id === id);
+      if (idx > -1) { DB.devices.splice(idx, 1); DataStore.set('devices', DB.devices); }
+      showToast('已删除', 'success');
+      renderDevices(document.getElementById('content'));
+    };
+
+    window.showDeviceDetail = function(id) {
+      const d = DB.devices.find(x => x.id === id);
+      if (!d) return;
+      const canteen = DB.canteens.find(c => c.id === d.canteenId);
+      let dataHtml = '';
+      if (d.lastData) {
+        dataHtml = '<div style="margin-top:12px"><strong>最新数据：</strong></div><div class="detail-list" style="margin-top:8px">';
+        for (const [k, v] of Object.entries(d.lastData)) {
+          const label = k === 'temperature' ? '温度' : k === 'humidity' ? '湿度' : k === 'distance' ? '离地距离' : k === 'status' ? '状态' : k === 'duration' ? '运行时长' : k;
+          const unit = k === 'temperature' ? '°C' : k === 'humidity' ? '%' : k === 'distance' ? 'cm' : k === 'duration' ? '分钟' : '';
+          dataHtml += `<div class="detail-item"><div class="label">${label}</div><div class="value">${v}${unit}</div></div>`;
+        }
+        dataHtml += '</div>';
+      }
+      openModal('设备详情', `
+        <div class="detail-list">
+          <div class="detail-item"><div class="label">设备编号</div><div class="value">${d.id}</div></div>
+          <div class="detail-item"><div class="label">设备名称</div><div class="value">${d.name}</div></div>
+          <div class="detail-item"><div class="label">设备类型</div><div class="value">${d.type}</div></div>
+          <div class="detail-item"><div class="label">所属食堂</div><div class="value">${canteen ? canteen.name : '-'}</div></div>
+          <div class="detail-item"><div class="label">安装位置</div><div class="value">${d.location}</div></div>
+          <div class="detail-item"><div class="label">安装日期</div><div class="value">${d.installDate}</div></div>
+          <div class="detail-item"><div class="label">设备状态</div><div class="value">${d.status === 'online' ? '在线' : d.status === 'warning' ? '告警' : '离线'}</div></div>
+          <div class="detail-item"><div class="label">最后更新</div><div class="value">${d.lastUpdate}</div></div>
+        </div>
+        ${dataHtml}
+      `, '<button class="btn btn-default" onclick="closeModal()">关闭</button>');
+    };
+
+    // ===== 异常预警 =====
+    function renderAlerts(el) {
+      setBreadcrumb(['首页', '异常行为预警']);
+      let list = currentUser.canteenId ? DB.alerts.filter(a => a.canteenId === currentUser.canteenId) : DB.alerts;
+      window.alertPageState = window.alertPageState || { currentPage: 1, pageSize: 10 };
+      var state = window.alertPageState;
+      var totalCount = list.length;
+      var paged = list.slice((state.currentPage - 1) * state.pageSize, state.currentPage * state.pageSize);
+      const headers = ['编号', '预警类型', '级别', '食堂', '位置', '发生时间', '状态', '处理人', '操作'];
+      const rows = paged.map(a => {
+        const canteen = DB.canteens.find(c => c.id === a.canteenId);
+        const levelTag = a.level === 'high' ? '<span class="tag tag-red">高</span>' : a.level === 'medium' ? '<span class="tag tag-orange">中</span>' : '<span class="tag tag-blue">低</span>';
+        const statusTag = a.status === 'pending' ? '<span class="tag tag-red">待处理</span>' : '<span class="tag tag-green">已处理</span>';
+        return [
+          a.id, a.type, levelTag, canteen ? canteen.name : '-', a.location, a.time, statusTag,
+          a.handler || '-',
+          `<button class="btn btn-sm btn-default" onclick="showAlertDetail(${a.id})">详情</button>` +
+          (a.status === 'pending' ? ` <button class="btn btn-sm btn-success" onclick="handleAlert(${a.id})">处理</button>` : '')
+        ];
+      });
+
+      el.innerHTML = `
+        <div class="filter-bar">
+          <select id="alertStatusFilter" onchange="filterAlertList()">
+            <option value="">全部状态</option>
+            <option value="pending">待处理</option>
+            <option value="handled">已处理</option>
+          </select>
+          <select id="alertLevelFilter" onchange="filterAlertList()">
+            <option value="">全部级别</option>
+            <option value="high">高危</option>
+            <option value="medium">中危</option>
+            <option value="low">低危</option>
+          </select>
+          <input type="text" id="alertSearchInput" placeholder="搜索预警类型/位置" oninput="filterAlertList()">
+          <button class="btn btn-primary" onclick="showToast('导出报表功能开发中', 'info')">导出报表</button>
+        </div>
+        <div class="card">
+          <div class="card-body" id="alertTableBody">
+            ${renderTable(headers, rows)}
+            ${renderPaginationBar(state, 'goToAlertPage', totalCount)}
+          </div>
+        </div>
+      `;
+    }
+    window.goToAlertPage = function(page) {
+      window.alertPageState.currentPage = page;
+      renderAlerts(document.getElementById('content'));
+    };
+
+    window.filterAlertList = function() {
+      window.alertPageState = window.alertPageState || { currentPage: 1, pageSize: 10 };
+      window.alertPageState.currentPage = 1;
+      const statusFilter = document.getElementById('alertStatusFilter').value;
+      const levelFilter = document.getElementById('alertLevelFilter').value;
+      const keyword = (document.getElementById('alertSearchInput').value || '').trim().toLowerCase();
+      let list = currentUser.canteenId ? DB.alerts.filter(a => a.canteenId === currentUser.canteenId) : DB.alerts;
+      if (statusFilter) list = list.filter(a => a.status === statusFilter);
+      if (levelFilter) list = list.filter(a => a.level === levelFilter);
+      if (keyword) list = list.filter(a => a.type.toLowerCase().includes(keyword) || a.location.toLowerCase().includes(keyword));
+      var state = window.alertPageState;
+      var totalCount = list.length;
+      var paged = list.slice((state.currentPage - 1) * state.pageSize, state.currentPage * state.pageSize);
+      const headers = ['编号', '预警类型', '级别', '食堂', '位置', '发生时间', '状态', '处理人', '操作'];
+      const rows = paged.map(a => {
+        const canteen = DB.canteens.find(c => c.id === a.canteenId);
+        const levelTag = a.level === 'high' ? '<span class="tag tag-red">高</span>' : a.level === 'medium' ? '<span class="tag tag-orange">中</span>' : '<span class="tag tag-blue">低</span>';
+        const statusTag = a.status === 'pending' ? '<span class="tag tag-red">待处理</span>' : '<span class="tag tag-green">已处理</span>';
+        return [a.id, a.type, levelTag, canteen ? canteen.name : '-', a.location, a.time, statusTag,
+          a.handler || '-',
+          `<button class="btn btn-sm btn-default" onclick="showAlertDetail(${a.id})">详情</button>` +
+          (a.status === 'pending' ? ` <button class="btn btn-sm btn-success" onclick="handleAlert(${a.id})">处理</button>` : '')];
+      });
+      document.getElementById('alertTableBody').innerHTML = renderTable(headers, rows) + renderPaginationBar(state, 'goToAlertPage', totalCount);
+    };
+
+    window.showAlertDetail = function(id) {
+      const a = DB.alerts.find(x => x.id === id);
+      if (!a) return;
+      const canteen = DB.canteens.find(c => c.id === a.canteenId);
+      openModal('预警详情', `
+        <div class="detail-list">
+          <div class="detail-item"><div class="label">预警编号</div><div class="value">${a.id}</div></div>
+          <div class="detail-item"><div class="label">预警类型</div><div class="value">${a.type}</div></div>
+          <div class="detail-item"><div class="label">风险级别</div><div class="value">${a.level === 'high' ? '高危' : a.level === 'medium' ? '中危' : '低危'}</div></div>
+          <div class="detail-item"><div class="label">所属食堂</div><div class="value">${canteen ? canteen.name : '-'}</div></div>
+          <div class="detail-item"><div class="label">发生位置</div><div class="value">${a.location}</div></div>
+          <div class="detail-item"><div class="label">发生时间</div><div class="value">${a.time}</div></div>
+          <div class="detail-item"><div class="label">检测设备</div><div class="value">${a.deviceId}</div></div>
+          <div class="detail-item"><div class="label">处理状态</div><div class="value">${a.status === 'pending' ? '待处理' : '已处理'}</div></div>
+          <div class="detail-item"><div class="label">处理人</div><div class="value">${a.handler || '-'}</div></div>
+          <div class="detail-item"><div class="label">处理时间</div><div class="value">${a.handleTime || '-'}</div></div>
+          <div class="detail-item" style="grid-column:span 2"><div class="label">详细描述</div><div class="value">${a.description}</div></div>
+        </div>
+        ${a.image ? '<div style="margin-top:16px"><div class="label">现场截图</div><div style="width:100%;height:200px;background:#f5f5f5;display:flex;align-items:center;justify-content:center;color:#999;margin-top:8px;border-radius:4px">[预警截图占位]</div></div>' : ''}
+      `, '<button class="btn btn-default" onclick="closeModal()">关闭</button>');
+    };
+
+    window.handleAlert = function(id) {
+      const a = DB.alerts.find(x => x.id === id);
+      if (!a) return;
+      a.status = 'handled';
+      a.handler = currentUser.realName;
+      a.handleTime = new Date().toISOString().slice(0, 19).replace('T', ' ');
+      DataStore.set('alerts', DB.alerts);
+      showToast('已标记为已处理', 'success');
+      renderAlerts(document.getElementById('content'));
+    };
+
+    // ===== 留样管理 =====
+    function renderSamples(el) {
+      setBreadcrumb(['首页', '留样管理']);
+      let list = currentUser.canteenId ? DB.samples.filter(s => s.canteenId === currentUser.canteenId) : DB.samples;
+      window.sampPageState = window.sampPageState || { currentPage: 1, pageSize: 10 };
+      var state = window.sampPageState;
+      var totalCount = list.length;
+      var paged = list.slice((state.currentPage - 1) * state.pageSize, state.currentPage * state.pageSize);
+      const headers = ['ID', '样品名称', '食堂', '餐次', '留样日期', '留样时间', '数量', '留样人', '到期日期', '存放位置', '状态', '操作'];
+      const rows = paged.map(s => {
+        const canteen = DB.canteens.find(c => c.id === s.canteenId);
+        const statusTag = s.status === '正常' ? '<span class="tag tag-green">正常</span>' : '<span class="tag tag-gray">已销毁</span>';
+        return [
+          s.id, s.name, canteen ? canteen.name : '-', s.mealType, s.sampleDate, s.sampleTime, s.quantity, s.sampler, s.expireDate, s.storage, statusTag,
+          `<button class="btn btn-sm btn-default" onclick="showSampleDetail(${s.id})">详情</button>` +
+          ` <button class="btn btn-sm btn-primary" onclick="editSample(${s.id})">编辑</button>` +
+          (s.status === '正常' ? ` <button class="btn btn-sm btn-danger" onclick="destroySample(${s.id})">销毁</button>` : '')
+        ];
+      });
+
+      el.innerHTML = `
+        <div class="filter-bar">
+          <select id="sampCanteenFilter" onchange="filterSampleList()"><option value="">全部食堂</option>${DB.canteens.filter(c => c.status).map(c => `<option value="${c.id}">${c.name}</option>`).join('')}</select>
+          <select id="sampStatusFilter" onchange="filterSampleList()"><option value="">全部状态</option><option>正常</option><option>已销毁</option></select>
+          <input type="text" id="sampSearchInput" placeholder="搜索样品名称" oninput="filterSampleList()">
+          <button class="btn btn-primary" onclick="openSampleModal()">+ 新增留样</button>
+        </div>
+        <div class="card">
+          <div class="card-body" id="sampTableBody">
+            ${renderTable(headers, rows)}
+            ${renderPaginationBar(state, 'goToSampPage', totalCount)}
+          </div>
+        </div>
+      `;
+    }
+    window.goToSampPage = function(page) {
+      window.sampPageState.currentPage = page;
+      renderSamples(document.getElementById('content'));
+    };
+
+    window.filterSampleList = function() {
+      window.sampPageState = window.sampPageState || { currentPage: 1, pageSize: 10 };
+      window.sampPageState.currentPage = 1;
+      const canteenFilter = document.getElementById('sampCanteenFilter').value;
+      const statusFilter = document.getElementById('sampStatusFilter').value;
+      const keyword = (document.getElementById('sampSearchInput').value || '').trim().toLowerCase();
+      let list = currentUser.canteenId ? DB.samples.filter(s => s.canteenId === currentUser.canteenId) : DB.samples;
+      if (canteenFilter) list = list.filter(s => s.canteenId === parseInt(canteenFilter));
+      if (statusFilter) list = list.filter(s => s.status === statusFilter);
+      if (keyword) list = list.filter(s => s.name.toLowerCase().includes(keyword));
+      var state = window.sampPageState;
+      var totalCount = list.length;
+      var paged = list.slice((state.currentPage - 1) * state.pageSize, state.currentPage * state.pageSize);
+      const headers = ['ID', '样品名称', '食堂', '餐次', '留样日期', '留样时间', '数量', '留样人', '到期日期', '存放位置', '状态', '操作'];
+      const rows = paged.map(s => {
+        const canteen = DB.canteens.find(c => c.id === s.canteenId);
+        const statusTag = s.status === '正常' ? '<span class="tag tag-green">正常</span>' : '<span class="tag tag-gray">已销毁</span>';
+        return [s.id, s.name, canteen ? canteen.name : '-', s.mealType, s.sampleDate, s.sampleTime, s.quantity, s.sampler, s.expireDate, s.storage, statusTag,
+          `<button class="btn btn-sm btn-default" onclick="showSampleDetail(${s.id})">详情</button>` +
+          ` <button class="btn btn-sm btn-primary" onclick="editSample(${s.id})">编辑</button>` +
+          (s.status === '正常' ? ` <button class="btn btn-sm btn-danger" onclick="destroySample(${s.id})">销毁</button>` : '')];
+      });
+      document.getElementById('sampTableBody').innerHTML = renderTable(headers, rows) + renderPaginationBar(state, 'goToSampPage', totalCount);
+    };
+
+    const __editingSampleId = { val: null };
+    window.editSample = function(id) {
+      const s = DB.samples.find(x => x.id === id);
+      if (!s) return;
+      __editingSampleId.val = id;
+      const canteenOpts = DB.canteens.filter(c => c.status).map(c => `<option value="${c.id}" ${c.id === s.canteenId ? 'selected' : ''}>${c.name}</option>`).join('');
+      openModal('编辑留样', `
+        <div class="form-row">
+          <div class="form-col"><label class="form-label">样品名称<span class="required">*</span></label><input class="form-input" id="sName" value="${s.name}"></div>
+          <div class="form-col"><label class="form-label">所属食堂<span class="required">*</span></label><select class="form-select" id="sCanteen">${canteenOpts}</select></div>
+        </div>
+        <div class="form-row">
+          <div class="form-col"><label class="form-label">餐次<span class="required">*</span></label><select class="form-select" id="sMeal"><option ${s.mealType === '早餐' ? 'selected' : ''}>早餐</option><option ${s.mealType === '午餐' ? 'selected' : ''}>午餐</option><option ${s.mealType === '晚餐' ? 'selected' : ''}>晚餐</option></select></div>
+          <div class="form-col"><label class="form-label">留样数量<span class="required">*</span></label><input class="form-input" id="sQty" value="${s.quantity}"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-col"><label class="form-label">留样日期<span class="required">*</span></label><input class="form-input" type="date" id="sDate" value="${s.sampleDate}"></div>
+          <div class="form-col"><label class="form-label">存放位置<span class="required">*</span></label><input class="form-input" id="sStorage" value="${s.storage}"></div>
+        </div>
+      `, '<button class="btn btn-default" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveSample()">保存</button>');
+    };
+
+    window.showSampleDetail = function(id) {
+      const s = DB.samples.find(x => x.id === id);
+      if (!s) return;
+      const canteen = DB.canteens.find(c => c.id === s.canteenId);
+      openModal('留样详情', `
+        <div class="detail-list">
+          <div class="detail-item"><div class="label">样品名称</div><div class="value">${s.name}</div></div>
+          <div class="detail-item"><div class="label">所属食堂</div><div class="value">${canteen ? canteen.name : '-'}</div></div>
+          <div class="detail-item"><div class="label">餐次类型</div><div class="value">${s.mealType}</div></div>
+          <div class="detail-item"><div class="label">留样数量</div><div class="value">${s.quantity}</div></div>
+          <div class="detail-item"><div class="label">留样日期</div><div class="value">${s.sampleDate}</div></div>
+          <div class="detail-item"><div class="label">留样时间</div><div class="value">${s.sampleTime}</div></div>
+          <div class="detail-item"><div class="label">留样人</div><div class="value">${s.sampler}</div></div>
+          <div class="detail-item"><div class="label">到期日期</div><div class="value">${s.expireDate}</div></div>
+          <div class="detail-item"><div class="label">存放位置</div><div class="value">${s.storage}</div></div>
+          <div class="detail-item"><div class="label">当前状态</div><div class="value">${s.status}</div></div>
+          <div class="detail-item" style="grid-column:span 2"><div class="label">备注</div><div class="value">${s.remark || '无'}</div></div>
+        </div>
+      `, '<button class="btn btn-default" onclick="closeModal()">关闭</button>');
+    };
+
+    window.destroySample = async function(id) {
+      if (!await showConfirm('确认销毁该留样？此操作不可撤销。', { title: '销毁留样', type: 'danger', danger: true })) return;
+      const s = DB.samples.find(x => x.id === id);
+      if (s) { s.status = '已销毁'; s.remark = '到期销毁'; DataStore.set('samples', DB.samples); }
+      showToast('已标记销毁', 'success');
+      renderSamples(document.getElementById('content'));
+    };
+
+    window.openSampleModal = function() {
+      const canteenOpts = DB.canteens.filter(c => c.status).map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+      openModal('新增留样', `
+        <div class="form-row">
+          <div class="form-col">
+            <label class="form-label">样品名称<span class="required">*</span></label>
+            <input class="form-input" id="sName" placeholder="请输入样品名称">
+          </div>
+          <div class="form-col">
+            <label class="form-label">所属食堂<span class="required">*</span></label>
+            <select class="form-select" id="sCanteen">${canteenOpts}</select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-col">
+            <label class="form-label">餐次<span class="required">*</span></label>
+            <select class="form-select" id="sMeal"><option>早餐</option><option>午餐</option><option>晚餐</option></select>
+          </div>
+          <div class="form-col">
+            <label class="form-label">留样数量<span class="required">*</span></label>
+            <input class="form-input" id="sQty" placeholder="如：150g">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-col">
+            <label class="form-label">留样日期<span class="required">*</span></label>
+            <input class="form-input" type="date" id="sDate">
+          </div>
+          <div class="form-col">
+            <label class="form-label">存放位置<span class="required">*</span></label>
+            <input class="form-input" id="sStorage" placeholder="如：冷藏柜A1">
+          </div>
+        </div>
+      `, '<button class="btn btn-default" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveSample()">保存</button>');
+      document.getElementById('sDate').value = new Date().toISOString().slice(0, 10);
+    };
+
+    window.saveSample = function() {
+      const name = document.getElementById('sName').value.trim();
+      const canteenId = parseInt(document.getElementById('sCanteen').value);
+      const mealType = document.getElementById('sMeal').value;
+      const qty = document.getElementById('sQty').value.trim();
+      const date = document.getElementById('sDate').value;
+      const storage = document.getElementById('sStorage').value.trim();
+      if (!name || !qty || !date || !storage) { showToast('请填写必填项', 'warning'); return; }
+      const editId = __editingSampleId.val;
+      if (editId) {
+        const s = DB.samples.find(x => x.id === editId);
+        if (s) { s.name = name; s.canteenId = canteenId; s.mealType = mealType; s.quantity = qty; s.sampleDate = date; s.storage = storage; }
+        DataStore.set('samples', DB.samples);
+        closeModal();
+        showToast('修改成功', 'success');
+      } else {
+        const now = new Date();
+        const expire = new Date(date); expire.setDate(expire.getDate() + 1);
+        const newId = Math.max(...DB.samples.map(s => s.id), 0) + 1;
+        DB.samples.push({
+          id: newId, name, canteenId, mealType, sampleDate: date,
+          sampleTime: now.toTimeString().slice(0, 5), quantity: qty,
+          sampler: currentUser.realName, expireDate: expire.toISOString().slice(0, 10),
+          status: '正常', storage, remark: ''
+        });
+        DataStore.set('samples', DB.samples);
+        closeModal();
+        showToast('保存成功', 'success');
+      }
+      renderSamples(document.getElementById('content'));
+    };
+
+    // ===== 人员管理 =====
+    function renderPersonnel(el) {
+      setBreadcrumb(['首页', '人员信息管理']);
+      let list = currentUser.canteenId ? DB.personnel.filter(p => p.canteenId === currentUser.canteenId) : DB.personnel;
+      window.persPageState = window.persPageState || { currentPage: 1, pageSize: 10 };
+      var state = window.persPageState;
+      var totalCount = list.length;
+      var paged = list.slice((state.currentPage - 1) * state.pageSize, state.currentPage * state.pageSize);
+      var headers = ['照片', '员工编号', '姓名', '所属食堂', '岗位', '联系电话', '健康证状态', '健康证到期日', '入职日期', '状态', '操作'];
+      var rows = paged.map(function(p) {
+        var canteen = DB.canteens.find(c => c.id === p.canteenId);
+        var healthTag = p.healthStatus === '有效' ? '<span class="tag tag-green">有效</span>' : p.healthStatus === '即将过期' ? '<span class="tag tag-orange">即将过期</span>' : '<span class="tag tag-red">已过期</span>';
+        var statusTag = p.status ? '<span class="tag tag-green">在职</span>' : '<span class="tag tag-gray">离职</span>';
+        var photoHtml = p.facePhoto ? '<img class="face-thumb" src="' + p.facePhoto + '" alt="face">' : '<span class="face-placeholder">' + p.name.charAt(0) + '</span>';
+        return [
+          photoHtml, p.empNo, p.name, canteen ? canteen.name : '-', p.position, p.phone, healthTag, p.healthExpire, p.entryDate, statusTag,
+          '<button class="btn btn-sm btn-default" onclick="showPersonDetail(' + p.id + ')">详情</button>' +
+          (currentUser.role !== 'staff' ? ' <button class="btn btn-sm btn-primary" onclick="editPerson(' + p.id + ')">编辑</button> <button class="btn btn-sm btn-danger" onclick="deletePerson(' + p.id + ')">删除</button>' : '')
+        ];
+      });
+
+      el.innerHTML = `
+        <div class="filter-bar">
+          <select id="persCanteenFilter" onchange="filterPersonList()"><option value="">全部食堂</option>${DB.canteens.filter(c => c.status).map(c => `<option value="${c.id}">${c.name}</option>`).join('')}</select>
+          <select id="persHealthFilter" onchange="filterPersonList()"><option value="">全部健康证状态</option><option>有效</option><option>即将过期</option><option>已过期</option></select>
+          <input type="text" id="persSearchInput" placeholder="搜索姓名/编号/电话" oninput="filterPersonList()">
+          ${currentUser.role !== 'staff' ? '<button class="btn btn-primary" onclick="openPersonModal()">+ 新增人员</button>' : ''}
+          ${currentUser.role !== 'staff' ? '<button class="btn btn-default" onclick="showToast(\'批量导入功能开发中\', \'info\')">批量导入</button>' : ''}
+        </div>
+        <div class="card">
+          <div class="card-body" id="persTableBody">
+            ${renderTable(headers, rows)}
+            ${renderPaginationBar(state, 'goToPersPage', totalCount)}
+          </div>
+        </div>
+      `;
+    }
+    window.goToPersPage = function(page) {
+      window.persPageState.currentPage = page;
+      renderPersonnel(document.getElementById('content'));
+    };
+
+    window.filterPersonList = function() {
+      window.persPageState = window.persPageState || { currentPage: 1, pageSize: 10 };
+      window.persPageState.currentPage = 1;
+      const canteenFilter = document.getElementById('persCanteenFilter').value;
+      const healthFilter = document.getElementById('persHealthFilter').value;
+      const keyword = (document.getElementById('persSearchInput').value || '').trim().toLowerCase();
+      let list = currentUser.canteenId ? DB.personnel.filter(p => p.canteenId === currentUser.canteenId) : DB.personnel;
+      if (canteenFilter) list = list.filter(p => p.canteenId === parseInt(canteenFilter));
+      if (healthFilter) list = list.filter(p => p.healthStatus === healthFilter);
+      if (keyword) list = list.filter(p => p.empNo.toLowerCase().includes(keyword) || p.name.toLowerCase().includes(keyword) || p.phone.includes(keyword));
+      var state = window.persPageState;
+      var totalCount = list.length;
+      var paged = list.slice((state.currentPage - 1) * state.pageSize, state.currentPage * state.pageSize);
+      var headers = ['照片', '员工编号', '姓名', '所属食堂', '岗位', '联系电话', '健康证状态', '健康证到期日', '入职日期', '状态', '操作'];
+      var rows = paged.map(function(p) {
+        var canteen = DB.canteens.find(c => c.id === p.canteenId);
+        var healthTag = p.healthStatus === '有效' ? '<span class="tag tag-green">有效</span>' : p.healthStatus === '即将过期' ? '<span class="tag tag-orange">即将过期</span>' : '<span class="tag tag-red">已过期</span>';
+        var statusTag = p.status ? '<span class="tag tag-green">在职</span>' : '<span class="tag tag-gray">离职</span>';
+        var photoHtml = p.facePhoto ? '<img class="face-thumb" src="' + p.facePhoto + '" alt="face">' : '<span class="face-placeholder">' + p.name.charAt(0) + '</span>';
+        return [photoHtml, p.empNo, p.name, canteen ? canteen.name : '-', p.position, p.phone, healthTag, p.healthExpire, p.entryDate, statusTag,
+          '<button class="btn btn-sm btn-default" onclick="showPersonDetail(' + p.id + ')">详情</button>' +
+          (currentUser.role !== 'staff' ? ' <button class="btn btn-sm btn-primary" onclick="editPerson(' + p.id + ')">编辑</button> <button class="btn btn-sm btn-danger" onclick="deletePerson(' + p.id + ')">删除</button>' : '')];
+      });
+      document.getElementById('persTableBody').innerHTML = renderTable(headers, rows) + renderPaginationBar(state, 'goToPersPage', totalCount);
+    };
+
+    const __editingPersonId = { val: null };
+    window.editPerson = function(id) {
+      const p = DB.personnel.find(x => x.id === id);
+      if (!p) return;
+      __editingPersonId.val = id;
+      window.__pendingPersonPhoto = p.facePhoto || null;
+      const canteenOpts = DB.canteens.filter(c => c.status).map(c => `<option value="${c.id}" ${c.id === p.canteenId ? 'selected' : ''}>${c.name}</option>`).join('');
+      var previewHtml = p.facePhoto ? '<div class="face-preview-box"><img class="face-preview" src="' + p.facePhoto + '" id="personPhotoPreview"></div>' : '<div class="face-preview-box hidden"><img class="face-preview" id="personPhotoPreview"></div>';
+      openModal('编辑人员', `
+        <div class="form-row">
+          <div class="form-col"><label class="form-label">员工编号</label><input class="form-input" id="pEmpNo" value="${p.empNo}" readonly style="background:#f5f5f5"></div>
+          <div class="form-col"><label class="form-label">姓名<span class="required">*</span></label><input class="form-input" id="pName" value="${p.name}"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-col"><label class="form-label">所属食堂<span class="required">*</span></label><select class="form-select" id="pCanteen">${canteenOpts}</select></div>
+          <div class="form-col"><label class="form-label">岗位<span class="required">*</span></label><input class="form-input" id="pPosition" value="${p.position}"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-col"><label class="form-label">联系电话<span class="required">*</span></label><input class="form-input" id="pPhone" value="${p.phone}"></div>
+          <div class="form-col"><label class="form-label">健康证编号</label><input class="form-input" id="pHealthNo" value="${p.healthCardNo}"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-col"><label class="form-label">健康证到期日</label><input class="form-input" type="date" id="pHealthExpire" value="${p.healthExpire !== '-' ? p.healthExpire : ''}"></div>
+          <div class="form-col"><label class="form-label">在职状态</label><select class="form-select" id="pPersonStatus"><option value="1" ${p.status ? 'selected' : ''}>在职</option><option value="0" ${!p.status ? 'selected' : ''}>离职</option></select></div>
+        </div>
+        <div class="form-row">
+          <div class="form-col"><label class="form-label">人脸照片</label><div class="upload-row"><input type="file" accept="image/*" id="personPhotoInput" onchange="handlePersonPhotoSelect(this)"></div>${previewHtml}</div>
+        </div>
+      `, '<button class="btn btn-default" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="savePerson()">保存</button>');
+    };
+
+    window.showPersonDetail = function(id) {
+      const p = DB.personnel.find(x => x.id === id);
+      if (!p) return;
+      const canteen = DB.canteens.find(c => c.id === p.canteenId);
+      var faceHtml = p.facePhoto ? '<img class="face-preview" src="' + p.facePhoto + '" alt="人脸照片">' : '<div style="width:120px;height:150px;background:#f5f5f5;display:flex;align-items:center;justify-content:center;color:#999;margin-top:8px;border-radius:4px">暂无照片</div>';
+      openModal('人员详情', `
+        <div class="detail-list">
+          <div class="detail-item"><div class="label">员工编号</div><div class="value">${p.empNo}</div></div>
+          <div class="detail-item"><div class="label">姓名</div><div class="value">${p.name}</div></div>
+          <div class="detail-item"><div class="label">所属食堂</div><div class="value">${canteen ? canteen.name : '-'}</div></div>
+          <div class="detail-item"><div class="label">岗位</div><div class="value">${p.position}</div></div>
+          <div class="detail-item"><div class="label">联系电话</div><div class="value">${p.phone}</div></div>
+          <div class="detail-item"><div class="label">健康证编号</div><div class="value">${p.healthCardNo}</div></div>
+          <div class="detail-item"><div class="label">健康证状态</div><div class="value">${p.healthStatus}</div></div>
+          <div class="detail-item"><div class="label">健康证到期日</div><div class="value">${p.healthExpire}</div></div>
+          <div class="detail-item"><div class="label">入职日期</div><div class="value">${p.entryDate}</div></div>
+          <div class="detail-item"><div class="label">在职状态</div><div class="value">${p.status ? '在职' : '离职'}</div></div>
+        </div>
+        <div style="margin-top:16px">
+          <div class="label">人脸照片</div>
+          ${faceHtml}
+        </div>
+      `, '<button class="btn btn-default" onclick="closeModal()">关闭</button>');
+    };
+
+    window.deletePerson = async function(id) {
+      if (!await showConfirm('确认删除该人员？此操作不可撤销。', { title: '删除人员', type: 'danger', danger: true })) return;
+      const idx = DB.personnel.findIndex(p => p.id === id);
+      if (idx > -1) { DB.personnel.splice(idx, 1); DataStore.set('personnel', DB.personnel); }
+      showToast('已删除', 'success');
+      renderPersonnel(document.getElementById('content'));
+    };
+
+    window.openPersonModal = function() {
+      window.__pendingPersonPhoto = null;
+      const canteenOpts = DB.canteens.filter(c => c.status).map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+      openModal('新增人员', `
+        <div class="form-row">
+          <div class="form-col"><label class="form-label">员工编号<span class="required">*</span></label><input class="form-input" id="pEmpNo" placeholder="如：YG2024011"></div>
+          <div class="form-col"><label class="form-label">姓名<span class="required">*</span></label><input class="form-input" id="pName" placeholder="请输入姓名"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-col"><label class="form-label">所属食堂<span class="required">*</span></label><select class="form-select" id="pCanteen">${canteenOpts}</select></div>
+          <div class="form-col"><label class="form-label">岗位<span class="required">*</span></label><input class="form-input" id="pPosition" placeholder="如：厨师"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-col"><label class="form-label">联系电话<span class="required">*</span></label><input class="form-input" id="pPhone" placeholder="请输入手机号"></div>
+          <div class="form-col"><label class="form-label">健康证编号</label><input class="form-input" id="pHealthNo" placeholder="如：健2024A011"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-col"><label class="form-label">健康证到期日</label><input class="form-input" type="date" id="pHealthExpire"></div>
+          <div class="form-col"><label class="form-label">入职日期</label><input class="form-input" type="date" id="pEntryDate"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-col"><label class="form-label">人脸照片</label><div class="upload-row"><input type="file" accept="image/*" id="personPhotoInput" onchange="handlePersonPhotoSelect(this)"></div><div class="face-preview-box hidden"><img class="face-preview" id="personPhotoPreview"></div></div>
+        </div>
+      `, '<button class="btn btn-default" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="savePerson()">保存</button>');
+      document.getElementById('pEntryDate').value = new Date().toISOString().slice(0, 10);
+    };
+
+    window.handlePersonPhotoSelect = function(input) {
+      var file = input.files[0];
+      if (!file) return;
+      if (file.size > 500 * 1024) {
+        showToast('照片大小不能超过 500KB', 'warning');
+        input.value = '';
+        return;
+      }
+      var reader = new FileReader();
+      reader.onload = function(e) {
+        window.__pendingPersonPhoto = e.target.result;
+        var preview = document.getElementById('personPhotoPreview');
+        if (preview) {
+          preview.src = e.target.result;
+          var box = preview.parentNode;
+          if (box) box.classList.remove('hidden');
+        }
+      };
+      reader.readAsDataURL(file);
+    };
+
+    window.savePerson = function() {
+      const empNo = document.getElementById('pEmpNo').value.trim();
+      const name = document.getElementById('pName').value.trim();
+      const canteenId = parseInt(document.getElementById('pCanteen').value);
+      const position = document.getElementById('pPosition').value.trim();
+      const phone = document.getElementById('pPhone').value.trim();
+      const healthNo = document.getElementById('pHealthNo').value.trim();
+      const healthExpire = document.getElementById('pHealthExpire').value;
+      const personStatusEl = document.getElementById('pPersonStatus');
+      const status = personStatusEl ? parseInt(personStatusEl.value) : 1;
+      const entryDate = document.getElementById('pEntryDate') ? document.getElementById('pEntryDate').value : '';
+      const pendingPhoto = window.__pendingPersonPhoto;
+      if (!empNo || !name || !position || !phone) { showToast('请填写必填项', 'warning'); return; }
+      const editId = __editingPersonId.val;
+      if (editId) {
+        const p = DB.personnel.find(x => x.id === editId);
+        if (p) {
+          p.name = name; p.canteenId = canteenId; p.position = position; p.phone = phone;
+          p.healthCardNo = healthNo || p.healthCardNo;
+          if (healthExpire) {
+            p.healthExpire = healthExpire;
+            p.healthStatus = new Date(healthExpire) < new Date() ? '已过期' : '有效';
+          }
+          p.entryDate = entryDate || p.entryDate;
+          if (personStatusEl !== null) p.status = status;
+          if (pendingPhoto) p.facePhoto = pendingPhoto;
+        }
+        DataStore.set('personnel', DB.personnel);
+        closeModal();
+        window.__pendingPersonPhoto = null;
+        showToast('修改成功', 'success');
+      } else {
+        const newId = Math.max(...DB.personnel.map(p => p.id), 0) + 1;
+        DB.personnel.push({
+          id: newId, empNo, name, phone, canteenId, position,
+          healthCardNo: healthNo || '-', healthStatus: healthExpire && new Date(healthExpire) < new Date() ? '已过期' : '有效',
+          healthExpire: healthExpire || '-', entryDate: entryDate || new Date().toISOString().slice(0, 10),
+          facePhoto: pendingPhoto || null, status: 1
+        });
+        DataStore.set('personnel', DB.personnel);
+        closeModal();
+        window.__pendingPersonPhoto = null;
+        showToast('保存成功', 'success');
+      }
+      renderPersonnel(document.getElementById('content'));
+    };
+
+    // ===== 晨午晚检 =====
+    function renderChecks(el) {
+      setBreadcrumb(['首页', '晨午晚检查管理']);
+      let list = currentUser.canteenId ? DB.checks.filter(c => c.canteenId === currentUser.canteenId) : DB.checks;
+      window.checkPageState = window.checkPageState || { currentPage: 1, pageSize: 10 };
+      var state = window.checkPageState;
+      var totalCount = list.length;
+      var paged = list.slice((state.currentPage - 1) * state.pageSize, state.currentPage * state.pageSize);
+      const headers = ['编号', '姓名', '所属食堂', '检查类型', '日期', '时间', '体温', '症状', '指甲', '着装', '健康状态', '设备', '操作'];
+      const rows = paged.map(c => {
+        const canteen = DB.canteens.find(ct => ct.id === c.canteenId);
+        const healthTag = c.healthStatus === '正常' ? '<span class="tag tag-green">正常</span>' : '<span class="tag tag-red">异常</span>';
+        return [
+          c.id, c.name, canteen ? canteen.name : '-', c.type, c.date, c.time, c.temperature + '°C',
+          c.symptoms, c.nails, c.uniform, healthTag, c.deviceId,
+          `<button class="btn btn-sm btn-default" onclick="showCheckDetail(${c.id})">详情</button>`
+        ];
+      });
+
+      el.innerHTML = `
+        <div class="filter-bar">
+          <select id="checkTypeFilter" onchange="filterCheckList()"><option value="">全部检查类型</option><option>晨检</option><option>午检</option><option>晚检</option></select>
+          <select id="checkHealthFilter" onchange="filterCheckList()"><option value="">全部健康状态</option><option>正常</option><option>异常</option></select>
+          <input type="date" id="checkDateFilter" onchange="filterCheckList()">
+          <input type="text" id="checkSearchInput" placeholder="搜索姓名" oninput="filterCheckList()">
+          <button class="btn btn-primary" onclick="openCheckModal()">+ 手动录入</button>
+        </div>
+        <div class="card">
+          <div class="card-body" id="checkTableBody">
+            ${renderTable(headers, rows)}
+            ${renderPaginationBar(state, 'goToCheckPage', totalCount)}
+          </div>
+        </div>
+      `;
+    }
+    window.goToCheckPage = function(page) {
+      window.checkPageState.currentPage = page;
+      renderChecks(document.getElementById('content'));
+    };
+
+    window.filterCheckList = function() {
+      window.checkPageState = window.checkPageState || { currentPage: 1, pageSize: 10 };
+      window.checkPageState.currentPage = 1;
+      const typeFilter = document.getElementById('checkTypeFilter').value;
+      const healthFilter = document.getElementById('checkHealthFilter').value;
+      const dateFilter = document.getElementById('checkDateFilter').value;
+      const keyword = (document.getElementById('checkSearchInput').value || '').trim().toLowerCase();
+      let list = currentUser.canteenId ? DB.checks.filter(c => c.canteenId === currentUser.canteenId) : DB.checks;
+      if (typeFilter) list = list.filter(c => c.type === typeFilter);
+      if (healthFilter) list = list.filter(c => c.healthStatus === healthFilter);
+      if (dateFilter) list = list.filter(c => c.date === dateFilter);
+      if (keyword) list = list.filter(c => c.name.toLowerCase().includes(keyword));
+      var state = window.checkPageState;
+      var totalCount = list.length;
+      var paged = list.slice((state.currentPage - 1) * state.pageSize, state.currentPage * state.pageSize);
+      const headers = ['编号', '姓名', '所属食堂', '检查类型', '日期', '时间', '体温', '症状', '指甲', '着装', '健康状态', '设备', '操作'];
+      const rows = paged.map(c => {
+        const canteen = DB.canteens.find(ct => ct.id === c.canteenId);
+        const healthTag = c.healthStatus === '正常' ? '<span class="tag tag-green">正常</span>' : '<span class="tag tag-red">异常</span>';
+        return [c.id, c.name, canteen ? canteen.name : '-', c.type, c.date, c.time, c.temperature + '°C',
+          c.symptoms, c.nails, c.uniform, healthTag, c.deviceId,
+          `<button class="btn btn-sm btn-default" onclick="showCheckDetail(${c.id})">详情</button>`];
+      });
+      document.getElementById('checkTableBody').innerHTML = renderTable(headers, rows) + renderPaginationBar(state, 'goToCheckPage', totalCount);
+    };
+
+    window.openCheckModal = function() {
+      const personOpts = DB.personnel.filter(p => p.status && (!currentUser.canteenId || p.canteenId === currentUser.canteenId))
+        .map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+      const canteenOpts = DB.canteens.filter(c => c.status).map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+      openModal('手动录入检查', `
+        <div class="form-row">
+          <div class="form-col"><label class="form-label">选择人员<span class="required">*</span></label><select class="form-select" id="chPerson"><option value="">请选择</option>${personOpts}</select></div>
+          <div class="form-col"><label class="form-label">所属食堂<span class="required">*</span></label><select class="form-select" id="chCanteen"><option value="">请选择</option>${canteenOpts}</select></div>
+        </div>
+        <div class="form-row">
+          <div class="form-col"><label class="form-label">检查类型<span class="required">*</span></label><select class="form-select" id="chType"><option>晨检</option><option>午检</option><option>晚检</option></select></div>
+          <div class="form-col"><label class="form-label">体温<span class="required">*</span></label><input class="form-input" id="chTemp" type="number" step="0.1" placeholder="如：36.5"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-col"><label class="form-label">症状</label><input class="form-input" id="chSymp" placeholder="如：无"></div>
+          <div class="form-col"><label class="form-label">指甲检查</label><select class="form-select" id="chNails"><option>合格</option><option>不合格</option></select></div>
+        </div>
+        <div class="form-row">
+          <div class="form-col"><label class="form-label">着装检查</label><select class="form-select" id="chUniform"><option>合格</option><option>不合格</option></select></div>
+          <div class="form-col"><label class="form-label">健康状态</label><select class="form-select" id="chHealth"><option>正常</option><option>异常</option></select></div>
+        </div>
+        <div class="form-row">
+          <div class="form-col" style="flex:2"><label class="form-label">备注</label><input class="form-input" id="chRemark" placeholder="如有异常请填写原因"></div>
+          <div class="form-col"></div>
+        </div>
+      `, '<button class="btn btn-default" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveCheck()">保存</button>');
+    };
+
+    window.saveCheck = function() {
+      const personId = parseInt(document.getElementById('chPerson').value);
+      const canteenId = parseInt(document.getElementById('chCanteen').value);
+      const type = document.getElementById('chType').value;
+      const temp = parseFloat(document.getElementById('chTemp').value);
+      const symp = document.getElementById('chSymp').value.trim() || '无';
+      const nails = document.getElementById('chNails').value;
+      const uniform = document.getElementById('chUniform').value;
+      const health = document.getElementById('chHealth').value;
+      const remark = document.getElementById('chRemark').value.trim();
+      if (!personId || !canteenId || isNaN(temp)) { showToast('请填写必填项', 'warning'); return; }
+      const person = DB.personnel.find(p => p.id === personId);
+      const now = new Date();
+      const newId = Math.max(...DB.checks.map(c => c.id), 0) + 1;
+      DB.checks.push({
+        id: newId, personId, name: person ? person.name : '-', canteenId, type,
+        date: now.toISOString().slice(0, 10), time: now.toTimeString().slice(0, 5),
+        temperature: temp, symptoms: symp, nails, uniform, healthStatus: health,
+        deviceId: '手动录入',
+        remark: health === '异常' && !remark ? '手动标记异常' : remark
+      });
+      DataStore.set('checks', DB.checks);
+      closeModal();
+      showToast('保存成功', 'success');
+      renderChecks(document.getElementById('content'));
+    };
+
+    window.showCheckDetail = function(id) {
+      const c = DB.checks.find(x => x.id === id);
+      if (!c) return;
+      const canteen = DB.canteens.find(ct => ct.id === c.canteenId);
+      openModal('检查详情', `
+        <div class="detail-list">
+          <div class="detail-item"><div class="label">检查编号</div><div class="value">${c.id}</div></div>
+          <div class="detail-item"><div class="label">姓名</div><div class="value">${c.name}</div></div>
+          <div class="detail-item"><div class="label">所属食堂</div><div class="value">${canteen ? canteen.name : '-'}</div></div>
+          <div class="detail-item"><div class="label">检查类型</div><div class="value">${c.type}</div></div>
+          <div class="detail-item"><div class="label">检查日期</div><div class="value">${c.date}</div></div>
+          <div class="detail-item"><div class="label">检查时间</div><div class="value">${c.time}</div></div>
+          <div class="detail-item"><div class="label">体温</div><div class="value">${c.temperature}°C</div></div>
+          <div class="detail-item"><div class="label">症状</div><div class="value">${c.symptoms}</div></div>
+          <div class="detail-item"><div class="label">指甲检查</div><div class="value">${c.nails}</div></div>
+          <div class="detail-item"><div class="label">着装检查</div><div class="value">${c.uniform}</div></div>
+          <div class="detail-item"><div class="label">健康状态</div><div class="value">${c.healthStatus}</div></div>
+          <div class="detail-item"><div class="label">检查设备</div><div class="value">${c.deviceId}</div></div>
+          <div class="detail-item" style="grid-column:span 2"><div class="label">备注</div><div class="value">${c.remark || '无'}</div></div>
+        </div>
+      `, '<button class="btn btn-default" onclick="closeModal()">关闭</button>');
+    };
+
+    // ===== 门禁管理 =====
+    function renderAccess(el) {
+      setBreadcrumb(['首页', '门禁管理']);
+      let list = currentUser.canteenId ? DB.access.filter(a => a.canteenId === currentUser.canteenId) : DB.access;
+      window.accPageState = window.accPageState || { currentPage: 1, pageSize: 10 };
+      var state = window.accPageState;
+      var totalCount = list.length;
+      var paged = list.slice((state.currentPage - 1) * state.pageSize, state.currentPage * state.pageSize);
+      const headers = ['门禁名称', '所属食堂', '位置', '类型', 'IP地址', '状态', '最后事件', '操作'];
+      const rows = paged.map(a => {
+        const canteen = DB.canteens.find(c => c.id === a.canteenId);
+        const statusStr = a.status === '正常' ? '<span class="status-dot online"></span>正常' : '<span class="status-dot offline"></span>离线';
+        return [
+          a.name, canteen ? canteen.name : '-', a.location, a.type, a.ip, statusStr,
+          a.lastEvent + '<br><span style="font-size:12px;color:#999">' + a.eventType + ' - ' + a.eventPerson + '</span>',
+          `<button class="btn btn-sm btn-default" onclick="showAccessDetail(${a.id})">详情</button>` +
+          ` <button class="btn btn-sm btn-default" onclick="showAccessLogs(${a.id})">记录</button>` +
+          ` <button class="btn btn-sm btn-primary" onclick="editAccess(${a.id})">编辑</button>` +
+          ` <button class="btn btn-sm btn-danger" onclick="deleteAccess(${a.id})">删除</button>`
+        ];
+      });
+
+      el.innerHTML = `
+        <div class="filter-bar">
+          <select id="accCanteenFilter" onchange="filterAccessList()"><option value="">全部食堂</option>${DB.canteens.filter(c => c.status).map(c => `<option value="${c.id}">${c.name}</option>`).join('')}</select>
+          <select id="accStatusFilter" onchange="filterAccessList()"><option value="">全部状态</option><option>正常</option><option>离线</option></select>
+          <input type="text" id="accSearchInput" placeholder="搜索门禁名称" oninput="filterAccessList()">
+          <button class="btn btn-primary" onclick="openAccessModal()">+ 添加门禁</button>
+          <button class="btn btn-default" onclick="showToast('批量导入功能开发中', 'info')">批量导入</button>
+        </div>
+        <div class="card">
+          <div class="card-body" id="accTableBody">
+            ${renderTable(headers, rows)}
+            ${renderPaginationBar(state, 'goToAccPage', totalCount)}
+          </div>
+        </div>
+      `;
+    }
+    window.goToAccPage = function(page) {
+      window.accPageState.currentPage = page;
+      renderAccess(document.getElementById('content'));
+    };
+
+    window.filterAccessList = function() {
+      window.accPageState = window.accPageState || { currentPage: 1, pageSize: 10 };
+      window.accPageState.currentPage = 1;
+      const canteenFilter = document.getElementById('accCanteenFilter').value;
+      const statusFilter = document.getElementById('accStatusFilter').value;
+      const keyword = (document.getElementById('accSearchInput').value || '').trim().toLowerCase();
+      let list = currentUser.canteenId ? DB.access.filter(a => a.canteenId === currentUser.canteenId) : DB.access;
+      if (canteenFilter) list = list.filter(a => a.canteenId === parseInt(canteenFilter));
+      if (statusFilter) list = list.filter(a => a.status === statusFilter);
+      if (keyword) list = list.filter(a => a.name.toLowerCase().includes(keyword) || a.location.toLowerCase().includes(keyword));
+      var state = window.accPageState;
+      var totalCount = list.length;
+      var paged = list.slice((state.currentPage - 1) * state.pageSize, state.currentPage * state.pageSize);
+      const headers = ['门禁名称', '所属食堂', '位置', '类型', 'IP地址', '状态', '最后事件', '操作'];
+      const rows = paged.map(a => {
+        const canteen = DB.canteens.find(c => c.id === a.canteenId);
+        const statusStr = a.status === '正常' ? '<span class="status-dot online"></span>正常' : '<span class="status-dot offline"></span>离线';
+        return [a.name, canteen ? canteen.name : '-', a.location, a.type, a.ip, statusStr,
+          a.lastEvent + '<br><span style="font-size:12px;color:#999">' + a.eventType + ' - ' + a.eventPerson + '</span>',
+          `<button class="btn btn-sm btn-default" onclick="showAccessDetail(${a.id})">详情</button>` +
+          ` <button class="btn btn-sm btn-default" onclick="showAccessLogs(${a.id})">记录</button>` +
+          ` <button class="btn btn-sm btn-primary" onclick="editAccess(${a.id})">编辑</button>` +
+          ` <button class="btn btn-sm btn-danger" onclick="deleteAccess(${a.id})">删除</button>`];
+      });
+      document.getElementById('accTableBody').innerHTML = renderTable(headers, rows) + renderPaginationBar(state, 'goToAccPage', totalCount);
+    };
+
+    const __editingAccessId = { val: null };
+    window.editAccess = function(id) {
+      const a = DB.access.find(x => x.id === id);
+      if (!a) return;
+      __editingAccessId.val = id;
+      const canteenOpts = DB.canteens.filter(c => c.status).map(c => `<option value="${c.id}" ${c.id === a.canteenId ? 'selected' : ''}>${c.name}</option>`).join('');
+      openModal('编辑门禁', `
+        <div class="form-row">
+          <div class="form-col"><label class="form-label">门禁名称<span class="required">*</span></label><input class="form-input" id="aName" value="${a.name}"></div>
+          <div class="form-col"><label class="form-label">所属食堂<span class="required">*</span></label><select class="form-select" id="aCanteen">${canteenOpts}</select></div>
+        </div>
+        <div class="form-row">
+          <div class="form-col"><label class="form-label">安装位置<span class="required">*</span></label><input class="form-input" id="aLocation" value="${a.location}"></div>
+          <div class="form-col"><label class="form-label">门禁类型<span class="required">*</span></label><select class="form-select" id="aType"><option ${a.type === '人脸识别' ? 'selected' : ''}>人脸识别</option><option ${a.type === '刷卡门禁' ? 'selected' : ''}>刷卡门禁</option><option ${a.type === '指纹门禁' ? 'selected' : ''}>指纹门禁</option></select></div>
+        </div>
+        <div class="form-row">
+          <div class="form-col"><label class="form-label">IP地址</label><input class="form-input" id="aIp" value="${a.ip}"></div>
+          <div class="form-col"><label class="form-label">设备状态</label><select class="form-select" id="aStatus"><option value="正常" ${a.status === '正常' ? 'selected' : ''}>正常</option><option value="离线" ${a.status === '离线' ? 'selected' : ''}>离线</option></select></div>
+        </div>
+      `, '<button class="btn btn-default" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveAccess()">保存</button>');
+    };
+
+    window.deleteAccess = async function(id) {
+      if (!await showConfirm('确认删除门禁？', { title: '删除门禁', type: 'danger', danger: true })) return;
+      const idx = DB.access.findIndex(a => a.id === id);
+      if (idx > -1) { DB.access.splice(idx, 1); DataStore.set('access', DB.access); }
+      showToast('已删除', 'success');
+      renderAccess(document.getElementById('content'));
+    };
+
+    window.showAccessDetail = function(id) {
+      const a = DB.access.find(x => x.id === id);
+      if (!a) return;
+      const canteen = DB.canteens.find(c => c.id === a.canteenId);
+      openModal('门禁详情', `
+        <div class="detail-list">
+          <div class="detail-item"><div class="label">门禁名称</div><div class="value">${a.name}</div></div>
+          <div class="detail-item"><div class="label">所属食堂</div><div class="value">${canteen ? canteen.name : '-'}</div></div>
+          <div class="detail-item"><div class="label">安装位置</div><div class="value">${a.location}</div></div>
+          <div class="detail-item"><div class="label">门禁类型</div><div class="value">${a.type}</div></div>
+          <div class="detail-item"><div class="label">IP地址</div><div class="value">${a.ip}</div></div>
+          <div class="detail-item"><div class="label">设备状态</div><div class="value">${a.status}</div></div>
+          <div class="detail-item"><div class="label">最后事件</div><div class="value">${a.lastEvent}</div></div>
+          <div class="detail-item"><div class="label">事件类型</div><div class="value">${a.eventType}</div></div>
+          <div class="detail-item"><div class="label">相关人员</div><div class="value">${a.eventPerson}</div></div>
+        </div>
+      `, '<button class="btn btn-default" onclick="closeModal()">关闭</button>');
+    };
+
+    window.showAccessLogs = function(doorId) {
+      const door = DB.access.find(a => a.id === doorId);
+      let logs = DB.accessLogs.filter(l => l.doorId === doorId);
+      const headers = ['编号', '门禁', '人员', '类型', '时间', '验证方式', '结果'];
+      const rows = logs.map(l => [l.id, l.doorName, l.name, l.type, l.time, l.method, l.result === '成功' ? '<span class="tag tag-green">成功</span>' : '<span class="tag tag-red">失败</span>']);
+      openModal(`${door ? door.name : '门禁'} - 出入记录`, renderTable(headers, rows), '<button class="btn btn-default" onclick="closeModal()">关闭</button>');
+    };
+
+    window.openAccessModal = function() {
+      const canteenOpts = DB.canteens.filter(c => c.status).map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+      openModal('添加门禁', `
+        <div class="form-row">
+          <div class="form-col"><label class="form-label">门禁名称<span class="required">*</span></label><input class="form-input" id="aName" placeholder="如：第一食堂正门"></div>
+          <div class="form-col"><label class="form-label">所属食堂<span class="required">*</span></label><select class="form-select" id="aCanteen">${canteenOpts}</select></div>
+        </div>
+        <div class="form-row">
+          <div class="form-col"><label class="form-label">安装位置<span class="required">*</span></label><input class="form-input" id="aLocation" placeholder="请输入详细位置"></div>
+          <div class="form-col"><label class="form-label">门禁类型<span class="required">*</span></label><select class="form-select" id="aType"><option>人脸识别</option><option>刷卡门禁</option><option>指纹门禁</option></select></div>
+        </div>
+        <div class="form-row">
+          <div class="form-col"><label class="form-label">IP地址</label><input class="form-input" id="aIp" placeholder="如：192.168.1.200"></div>
+          <div class="form-col"></div>
+        </div>
+      `, '<button class="btn btn-default" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveAccess()">保存</button>');
+    };
+
+    window.saveAccess = function() {
+      const name = document.getElementById('aName').value.trim();
+      const canteenId = parseInt(document.getElementById('aCanteen').value);
+      const location = document.getElementById('aLocation').value.trim();
+      const type = document.getElementById('aType').value;
+      const ip = document.getElementById('aIp').value.trim();
+      const statusEl = document.getElementById('aStatus');
+      const status = statusEl ? statusEl.value : '正常';
+      if (!name || !location) { showToast('请填写必填项', 'warning'); return; }
+      const editId = __editingAccessId.val;
+      if (editId) {
+        const a = DB.access.find(x => x.id === editId);
+        if (a) { a.name = name; a.canteenId = canteenId; a.location = location; a.type = type; a.ip = ip; if (statusEl) a.status = status; }
+        DataStore.set('access', DB.access);
+        closeModal();
+        showToast('修改成功', 'success');
+      } else {
+        const newId = Math.max(...DB.access.map(a => a.id), 0) + 1;
+        DB.access.push({
+          id: newId, name, canteenId, location, type, status: status || '正常',
+          ip: ip || '-', lastEvent: '-', eventType: '-', eventPerson: '-'
+        });
+        DataStore.set('access', DB.access);
+        closeModal();
+        showToast('保存成功', 'success');
+      }
+      renderAccess(document.getElementById('content'));
+    };
+
+    // ===== 视频监控 =====
+    function renderMonitor(el) {
+      setBreadcrumb(['首页', '视频监控']);
+      let list = currentUser.canteenId ? DB.cameras.filter(c => c.canteenId === currentUser.canteenId) : DB.cameras;
+      const canteenOpts = DB.canteens.filter(c => c.status).map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+      el.innerHTML = `
+        <div class="filter-bar">
+          <select onchange="filterMonitorList(this)">
+            <option value="">全部食堂</option>${canteenOpts}
+          </select>
+        </div>
+        <div class="monitor-grid" id="monitorGrid">
+          ${list.map(c => {
+            const canteen = DB.canteens.find(ct => ct.id === c.canteenId);
+            const statusIcon = c.status === '在线' ? '<span class="status-dot online"></span>' : '<span class="status-dot offline"></span>';
+            return `<div class="monitor-card" data-canteen="${c.canteenId}">
+              <div class="monitor-header">
+                <span>${c.name} | ${canteen ? canteen.name : '-'}</span>
+                <div class="monitor-status">${statusIcon}${c.status}</div>
+              </div>
+              <div class="monitor-body">
+                <div class="monitor-placeholder">
+                  <div class="icon">&#127909;</div>
+                  <div>${c.status === '在线' ? '实时监控画面中' : '设备离线'}</div>
+                  <div style="font-size:12px;color:#555;margin-top:4px">${c.resolution} | ${c.direction}</div>
+                </div>
+              </div>
+            </div>`;
+          }).join('')}
+        </div>
+      `;
+    }
+
+    window.filterMonitorList = function(sel) {
+      const val = sel.value;
+      document.querySelectorAll('#monitorGrid .monitor-card').forEach(card => {
+        card.style.display = (!val || card.dataset.canteen === val) ? '' : 'none';
+      });
+    };
+
+    // ===== 食安数据（监管用户） =====
+    function renderDataView(el) {
+      setBreadcrumb(['首页', '食安数据概览']);
+      el.innerHTML = `
+        <div class="stats-row">
+          <div class="stat-card"><div class="stat-icon blue">&#127968;</div><div class="stat-info"><div class="stat-num">${DB.canteens.filter(c => c.status).length}</div><div class="stat-label">运营食堂</div></div></div>
+          <div class="stat-card"><div class="stat-icon green">&#128100;</div><div class="stat-info"><div class="stat-num">${DB.personnel.filter(p => p.status).length}</div><div class="stat-label">从业人员</div></div></div>
+          <div class="stat-card"><div class="stat-icon orange">&#128268;</div><div class="stat-info"><div class="stat-num">${DB.devices.filter(d => d.status === 'online').length}/${DB.devices.length}</div><div class="stat-label">设备在线/总数</div></div></div>
+          <div class="stat-card"><div class="stat-icon red">&#128680;</div><div class="stat-info"><div class="stat-num">${DB.alerts.filter(a => a.status === 'pending').length}</div><div class="stat-label">待处理预警</div></div></div>
+        </div>
+        <div class="two-col">
+          <div class="card">
+            <div class="card-header"><div class="card-title">食堂健康证到期预警</div></div>
+            <div class="card-body">
+              ${renderTable(['姓名', '食堂', '岗位', '健康证到期日', '剩余天数'],
+                DB.personnel.filter(p => p.status && (p.healthStatus === '即将过期' || p.healthStatus === '已过期')).map(p => {
+                  const canteen = DB.canteens.find(c => c.id === p.canteenId);
+                  const days = Math.ceil((new Date(p.healthExpire) - new Date()) / (1000 * 60 * 60 * 24));
+                  const dayTag = days < 0 ? '<span class="tag tag-red">已过期 ' + Math.abs(days) + ' 天</span>' : '<span class="tag tag-orange">剩余 ' + days + ' 天</span>';
+                  return [p.name, canteen ? canteen.name : '-', p.position, p.healthExpire, dayTag];
+                }))
+              }
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header"><div class="card-title">近7天预警统计</div></div>
+            <div class="card-body">
+              ${renderTable(['预警类型', '发生次数', '已处理', '待处理'],
+                Object.entries(DB.alerts.reduce((acc, a) => { acc[a.type] = (acc[a.type] || { total: 0, handled: 0, pending: 0 }); acc[a.type].total++; if (a.status === 'handled') acc[a.type].handled++; else acc[a.type].pending++; return acc; }, {}))
+                  .map(([type, data]) => [type, data.total, data.handled, data.pending]))
+              }
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><div class="card-title">设备状态汇总</div></div>
+          <div class="card-body">
+            ${renderTable(['食堂', '设备总数', '在线', '离线', '告警'],
+              DB.canteens.filter(c => c.status).map(c => {
+                const devs = DB.devices.filter(d => d.canteenId === c.id);
+                return [c.name, devs.length, devs.filter(d => d.status === 'online').length, devs.filter(d => d.status === 'offline').length, devs.filter(d => d.status === 'warning').length];
+              }))
+            }
+          </div>
+        </div>
+      `;
+    }
+
+    // ===== 角色管理 =====
+    function renderRoles(el) {
+      setBreadcrumb(['首页', '角色管理']);
+      window.rolePageState = window.rolePageState || { currentPage: 1, pageSize: 10 };
+      var state = window.rolePageState;
+      var list = DB.roles;
+      var totalCount = list.length;
+      var paged = list.slice((state.currentPage - 1) * state.pageSize, state.currentPage * state.pageSize);
+      const headers = ['编号', '角色名称', '角色标识', '描述', '关联用户数', '状态', '操作'];
+      const rows = paged.map(r => {
+        const statusTag = r.status ? '<span class="tag tag-green">启用</span>' : '<span class="tag tag-gray">停用</span>';
+        return [
+          r.id, r.name, r.code, r.description, r.userCount || 0, statusTag,
+          `<button class="btn btn-sm btn-default" onclick="showRoleDetail(${r.id})">详情</button>` +
+          ` <button class="btn btn-sm btn-primary" onclick="editRole(${r.id})">编辑</button>` +
+          ` <button class="btn btn-sm btn-danger" onclick="deleteRole(${r.id})">删除</button>`
+        ];
+      });
+      el.innerHTML = `
+        <div class="filter-bar">
+          <button class="btn btn-primary" onclick="openRoleModal()">+ 新增角色</button>
+        </div>
+        <div class="card">
+          <div class="card-body">
+            ${renderTable(headers, rows)}
+            ${renderPaginationBar(state, 'goToRolePage', totalCount)}
+          </div>
+        </div>
+      `;
+    }
+    window.goToRolePage = function(page) {
+      window.rolePageState.currentPage = page;
+      renderRoles(document.getElementById('content'));
+    };
+
+    window.showRoleDetail = function(id) {
+      const r = DB.roles.find(x => x.id === id);
+      if (!r) return;
+      openModal('角色详情', `
+        <div class="detail-list">
+          <div class="detail-item"><div class="label">角色ID</div><div class="value">${r.id}</div></div>
+          <div class="detail-item"><div class="label">角色名称</div><div class="value">${r.name}</div></div>
+          <div class="detail-item"><div class="label">角色标识</div><div class="value">${r.code}</div></div>
+          <div class="detail-item"><div class="label">关联用户</div><div class="value">${r.userCount || 0} 人</div></div>
+          <div class="detail-item"><div class="label">创建时间</div><div class="value">${r.createTime}</div></div>
+          <div class="detail-item"><div class="label">状态</div><div class="value">${r.status ? '启用' : '停用'}</div></div>
+          <div class="detail-item" style="grid-column:span 2"><div class="label">描述</div><div class="value">${r.description}</div></div>
+        </div>
+      `, '<button class="btn btn-default" onclick="closeModal()">关闭</button>');
+    };
+
+    const __savingRoleId = { val: null };
+    window.openRoleModal = function() {
+      __savingRoleId.val = null;
+      openModal('新增角色', `
+        <div class="form-row">
+          <div class="form-col"><label class="form-label">角色名称<span class="required">*</span></label><input class="form-input" id="rName" placeholder="如：审计员"></div>
+          <div class="form-col"><label class="form-label">角色标识<span class="required">*</span></label><input class="form-input" id="rCode" placeholder="如：auditor" style="text-transform:lowercase"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-col" style="flex:2"><label class="form-label">角色描述</label><input class="form-input" id="rDesc" placeholder="描述该角色的权限范围"></div>
+          <div class="form-col"><label class="form-label">状态</label><select class="form-select" id="rStatus"><option value="1">启用</option><option value="0">停用</option></select></div>
+        </div>
+      `, '<button class="btn btn-default" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveRole()">保存</button>');
+    };
+
+    window.editRole = function(id) {
+      const r = DB.roles.find(x => x.id === id);
+      if (!r) return;
+      __savingRoleId.val = id;
+      openModal('编辑角色', `
+        <div class="form-row">
+          <div class="form-col"><label class="form-label">角色名称<span class="required">*</span></label><input class="form-input" id="rName" value="${r.name}"></div>
+          <div class="form-col"><label class="form-label">角色标识</label><input class="form-input" id="rCode" value="${r.code}" readonly style="background:#f5f5f5"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-col" style="flex:2"><label class="form-label">角色描述</label><input class="form-input" id="rDesc" value="${r.description || ''}"></div>
+          <div class="form-col"><label class="form-label">状态</label><select class="form-select" id="rStatus"><option value="1" ${r.status ? 'selected' : ''}>启用</option><option value="0" ${!r.status ? 'selected' : ''}>停用</option></select></div>
+        </div>
+      `, '<button class="btn btn-default" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveRole()">保存</button>');
+    };
+
+    window.saveRole = function() {
+      const name = document.getElementById('rName').value.trim();
+      const code = document.getElementById('rCode').value.trim().toLowerCase();
+      const desc = document.getElementById('rDesc').value.trim();
+      const status = parseInt(document.getElementById('rStatus').value);
+      if (!name || !code) { showToast('请填写必填项', 'warning'); return; }
+      const editId = __savingRoleId.val;
+      if (editId) {
+        const r = DB.roles.find(x => x.id === editId);
+        if (r) { r.name = name; r.description = desc; r.status = status; }
+        DataStore.set('roles', DB.roles);
+        closeModal();
+        showToast('修改成功', 'success');
+      } else {
+        if (DB.roles.find(r => r.code === code)) { showToast('角色标识已存在', 'error'); return; }
+        const newId = Math.max(...DB.roles.map(r => r.id), 0) + 1;
+        DB.roles.push({ id: newId, name, code, description: desc, status, userCount: 0, createTime: '2026-07-21' });
+        DataStore.set('roles', DB.roles);
+        closeModal();
+        showToast('保存成功', 'success');
+      }
+      renderRoles(document.getElementById('content'));
+    };
+
+    window.deleteRole = async function(id) {
+      const r = DB.roles.find(x => x.id === id);
+      if (!r) return;
+      if (r.userCount > 0) { showToast('该角色下有 ' + r.userCount + ' 个用户，无法删除', 'error'); return; }
+      if (!await showConfirm('确认删除角色「' + r.name + '」？', { title: '删除角色', type: 'danger', danger: true })) return;
+      const idx = DB.roles.findIndex(x => x.id === id);
+      if (idx > -1) { DB.roles.splice(idx, 1); DataStore.set('roles', DB.roles); }
+      showToast('已删除', 'success');
+      renderRoles(document.getElementById('content'));
+    };
+    function renderSystem(el) {
+      setBreadcrumb(['首页', '系统管理']);
+      window.sysPageState = window.sysPageState || { currentPage: 1, pageSize: 10 };
+      var state = window.sysPageState;
+      var users = DB.users;
+      var totalCount = users.length;
+      var paged = users.slice((state.currentPage - 1) * state.pageSize, state.currentPage * state.pageSize);
+      el.innerHTML = `
+        <div class="card">
+          <div class="card-header"><div class="card-title">用户管理</div></div>
+          <div class="card-body">
+            ${renderTable(['ID', '账号', '姓名', '角色', '所属食堂', '电话', '最后登录', '状态', '操作'],
+              paged.map(u => {
+                const canteen = DB.canteens.find(c => c.id === u.canteenId);
+                const roleTag = u.role === 'admin' ? '<span class="tag tag-red">平台管理员</span>' : u.role === 'canteenAdmin' ? '<span class="tag tag-blue">食堂管理员</span>' : u.role === 'staff' ? '<span class="tag tag-green">从业人员</span>' : '<span class="tag tag-orange">监管用户</span>';
+                const statusTag = u.status ? '<span class="tag tag-green">正常</span>' : '<span class="tag tag-gray">禁用</span>';
+                return [u.id, u.username, u.realName, roleTag, canteen ? canteen.name : '-', u.phone, u.lastLogin, statusTag, '<button class="btn btn-sm btn-default">编辑</button>'];
+              }))
+            }
+            ${renderPaginationBar(state, 'goToSysPage', totalCount)}
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><div class="card-title">系统参数</div></div>
+          <div class="card-body">
+            <div class="detail-list">
+              <div class="detail-item"><div class="label">系统名称</div><div class="value">智慧食安管理系统</div></div>
+              <div class="detail-item"><div class="label">系统版本</div><div class="value">v1.0.0</div></div>
+              <div class="detail-item"><div class="label">留样保存期限</div><div class="value">48小时</div></div>
+              <div class="detail-item"><div class="label">健康证提前提醒天数</div><div class="value">30天</div></div>
+              <div class="detail-item"><div class="label">异常预警自动处理时限</div><div class="value">24小时</div></div>
+              <div class="detail-item"><div class="label">数据备份周期</div><div class="value">每日凌晨2:00</div></div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    window.goToSysPage = function(page) {
+      window.sysPageState.currentPage = page;
+      renderSystem(document.getElementById('content'));
+    };
+
+    // ===================== 启动 =====================
+    renderNav();
+    renderContent();
+  </script>
+</body>
+</html>
