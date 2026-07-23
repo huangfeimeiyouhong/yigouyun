@@ -143,7 +143,17 @@ const MOCK_DATA = {
     { id: 2, name: '食堂管理员', code: 'canteenAdmin', description: '食堂运营管理权限，包括食堂用户管理、预警审核、巡查记录审核等', status: 1, userCount: 2, createTime: '2024-01-01' },
     { id: 3, name: '从业人员', code: 'staff', description: '基础操作权限，包括留样填报、台账填报、巡检、安全巡查、菜谱维护等', status: 1, userCount: 3, createTime: '2024-01-01' },
     { id: 4, name: '监管用户', code: 'inspector', description: '食品安全数据查看权限，包括食安数据总览和视频监控查看', status: 1, userCount: 1, createTime: '2024-03-15' }
-  ]
+  ],
+
+  // 系统参数
+  sysParams: {
+    systemName: '智慧食安管理系统',
+    systemVersion: 'v1.0.0',
+    sampleKeepHours: 48,
+    healthCertWarnDays: 30,
+    alertAutoHandleHours: 24,
+    backupSchedule: '每日凌晨2:00'
+  }
 };
 
 // 工具函数
@@ -170,9 +180,13 @@ const DataStore = {
       this.set('menus', MOCK_DATA.menus);
       this.set('notices', MOCK_DATA.notices);
       this.set('roles', MOCK_DATA.roles);
+      this.set('sysParams', MOCK_DATA.sysParams);
       this.set('initialized', true);
     } else if (!this.get('roles')) {
       this.set('roles', MOCK_DATA.roles);
+    }
+    if (!this.get('sysParams')) {
+      this.set('sysParams', MOCK_DATA.sysParams);
     }
   },
   getAll() {
@@ -189,7 +203,8 @@ const DataStore = {
       cameras: this.get('cameras') || MOCK_DATA.cameras,
       menus: this.get('menus') || MOCK_DATA.menus,
       notices: this.get('notices') || MOCK_DATA.notices,
-      roles: this.get('roles') || MOCK_DATA.roles
+      roles: this.get('roles') || MOCK_DATA.roles,
+      sysParams: this.get('sysParams') || MOCK_DATA.sysParams
     };
   }
 };

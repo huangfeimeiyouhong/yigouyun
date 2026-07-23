@@ -2338,24 +2338,88 @@
           </div>
         </div>
         <div class="card">
-          <div class="card-header"><div class="card-title">系统参数</div></div>
-          <div class="card-body">
-            <div class="detail-list">
-              <div class="detail-item"><div class="label">系统名称</div><div class="value">智慧食安管理系统</div></div>
-              <div class="detail-item"><div class="label">系统版本</div><div class="value">v1.0.0</div></div>
-              <div class="detail-item"><div class="label">留样保存期限</div><div class="value">48小时</div></div>
-              <div class="detail-item"><div class="label">健康证提前提醒天数</div><div class="value">30天</div></div>
-              <div class="detail-item"><div class="label">异常预警自动处理时限</div><div class="value">24小时</div></div>
-              <div class="detail-item"><div class="label">数据备份周期</div><div class="value">每日凌晨2:00</div></div>
-            </div>
-          </div>
+          <div class="card-header"><div class="card-title">系统参数</div><button class="btn btn-sm btn-primary" id="sysParamEditBtn" onclick="toggleSysParamEdit()">编辑</button></div>
+          <div class="card-body" id="sysParamsBody"></div>
         </div>
       `;
+      renderSysParams();
     }
 
     window.goToSysPage = function(page) {
       window.sysPageState.currentPage = page;
       renderSystem(document.getElementById('content'));
+    };
+
+    // ===== 系统参数编辑 =====
+    var __sysParamEditing = false;
+
+    function renderSysParams() {
+      var p = DB.sysParams || {};
+      var body = document.getElementById('sysParamsBody');
+      if (!body) return;
+      if (__sysParamEditing) {
+        body.innerHTML = `
+          <div class="detail-list">
+            <div class="detail-item"><div class="label">系统名称</div><div class="value"><input type="text" id="sp_systemName" value="${p.systemName || ''}" style="width:200px"></div></div>
+            <div class="detail-item"><div class="label">系统版本</div><div class="value"><input type="text" id="sp_systemVersion" value="${p.systemVersion || ''}" style="width:120px"></div></div>
+            <div class="detail-item"><div class="label">留样保存期限</div><div class="value"><input type="number" id="sp_sampleKeepHours" value="${p.sampleKeepHours || 48}" min="1" style="width:80px"> 小时</div></div>
+            <div class="detail-item"><div class="label">健康证提前提醒天数</div><div class="value"><input type="number" id="sp_healthCertWarnDays" value="${p.healthCertWarnDays || 30}" min="1" style="width:80px"> 天</div></div>
+            <div class="detail-item"><div class="label">异常预警自动处理时限</div><div class="value"><input type="number" id="sp_alertAutoHandleHours" value="${p.alertAutoHandleHours || 24}" min="1" style="width:80px"> 小时</div></div>
+            <div class="detail-item"><div class="label">数据备份周期</div><div class="value"><input type="text" id="sp_backupSchedule" value="${p.backupSchedule || ''}" style="width:160px"></div></div>
+          </div>
+          <div style="margin-top:16px;display:flex;gap:8px">
+            <button class="btn btn-primary" onclick="saveSysParams()">保存</button>
+            <button class="btn btn-default" onclick="toggleSysParamEdit()">取消</button>
+          </div>
+        `;
+        document.getElementById('sysParamEditBtn').style.display = 'none';
+      } else {
+        body.innerHTML = `
+          <div class="detail-list">
+            <div class="detail-item"><div class="label">系统名称</div><div class="value">${p.systemName || '-'}</div></div>
+            <div class="detail-item"><div class="label">系统版本</div><div class="value">${p.systemVersion || '-'}</div></div>
+            <div class="detail-item"><div class="label">留样保存期限</div><div class="value">${p.sampleKeepHours || '-'}小时</div></div>
+            <div class="detail-item"><div class="label">健康证提前提醒天数</div><div class="value">${p.healthCertWarnDays || '-'}天</div></div>
+            <div class="detail-item"><div class="label">异常预警自动处理时限</div><div class="value">${p.alertAutoHandleHours || '-'}小时</div></div>
+            <div class="detail-item"><div class="label">数据备份周期</div><div class="value">${p.backupSchedule || '-'}</div></div>
+          </div>
+        `;
+        document.getElementById('sysParamEditBtn').style.display = '';
+      }
+    }
+
+    window.toggleSysParamEdit = function() {
+      __sysParamEditing = !__sysParamEditing;
+      renderSysParams();
+    };
+
+    window.saveSysParams = function() {
+      var name = document.getElementById('sp_systemName').value.trim();
+      var version = document.getElementById('sp_systemVersion').value.trim();
+      var keepHrs = parseInt(document.getElementById('sp_sampleKeepHours').value);
+      var warnDays = parseInt(document.getElementById('sp_healthCertWarnDays').value);
+      var alertHrs = parseInt(document.getElementById('sp_alertAutoHandleHours').value);
+      var backup = document.getElementById('sp_backupSchedule').value.trim();
+
+      if (!name) { showToast('请填写系统名称', 'warning'); return; }
+      if (!version) { showToast('请填写系统版本', 'warning'); return; }
+      if (!keepHrs || keepHrs < 1) { showToast('留样保存期限必须大于0', 'warning'); return; }
+      if (!warnDays || warnDays < 1) { showToast('提醒天数必须大于0', 'warning'); return; }
+      if (!alertHrs || alertHrs < 1) { showToast('处理时限必须大于0', 'warning'); return; }
+      if (!backup) { showToast('请填写数据备份周期', 'warning'); return; }
+
+      DB.sysParams = {
+        systemName: name,
+        systemVersion: version,
+        sampleKeepHours: keepHrs,
+        healthCertWarnDays: warnDays,
+        alertAutoHandleHours: alertHrs,
+        backupSchedule: backup
+      };
+      DataStore.set('sysParams', DB.sysParams);
+      __sysParamEditing = false;
+      renderSysParams();
+      showToast('系统参数已保存', 'success');
     };
 
     // ===================== 启动 =====================
