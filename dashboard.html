@@ -701,7 +701,7 @@
     // ===================== 初始化 =====================
     DataStore.init();
     const currentUser = DataStore.get('currentUser');
-    if (!currentUser) { window.location.href = 'index.html'; }
+    if (!currentUser) { window.location.href = 'index.html?redirect=' + encodeURIComponent(window.location.hash || ''); }
 
     // 全部可用菜单（权限项）
     const ALL_MENUS = [
@@ -750,7 +750,18 @@
     // 监管用户为只读角色：可查看业务数据，但不能新增/编辑/删除
     function isViewOnly() { return currentUser.role === 'inspector'; }
 
-    let currentPage = (roleConfig[currentUser.role] && roleConfig[currentUser.role].menus[0]) ? roleConfig[currentUser.role].menus[0].key : 'dashboard';
+    // 从 URL hash 解析当前页面（支持刷新保留、可分享/书签）；无效或无则回落到第一个菜单
+    function parseHashPage() {
+      var h = (window.location.hash || '').replace(/^#/, '').trim();
+      return h || null;
+    }
+    function firstMenuKey() {
+      var menus = (roleConfig[currentUser.role] && roleConfig[currentUser.role].menus) || [];
+      return menus.length ? menus[0].key : 'dashboard';
+    }
+    var _hashPage = parseHashPage();
+    var _menus0 = (roleConfig[currentUser.role] && roleConfig[currentUser.role].menus) || [];
+    let currentPage = (_hashPage && _menus0.some(m => m.key === _hashPage)) ? _hashPage : firstMenuKey();
 
     // ===================== 导航渲染 =====================
     function renderNav() {
@@ -767,10 +778,25 @@
     }
 
     function navigate(page) {
-      currentPage = page;
-      renderNav();
-      renderContent();
+      var menus = (roleConfig[currentUser.role] && roleConfig[currentUser.role].menus) || [];
+      if (!menus.some(m => m.key === page)) return; // 越权访问忽略
+      if (window.location.hash.replace(/^#/, '') === page) {
+        currentPage = page; renderNav(); renderContent();
+      } else {
+        window.location.hash = page; // 改变 hash，由 hashchange 统一渲染
+      }
     }
+
+    // 浏览器前进/后退、手动改地址栏 hash、刷新后均触发此事件，实现每个菜单独立 URL
+    window.addEventListener('hashchange', function() {
+      var page = parseHashPage();
+      var menus = (roleConfig[currentUser.role] && roleConfig[currentUser.role].menus) || [];
+      if (page && menus.some(m => m.key === page)) {
+        currentPage = page; renderNav(); renderContent();
+      } else {
+        window.location.hash = currentPage; // 无效 hash 回落当前页
+      }
+    });
 
     document.getElementById('toggleSidebar').addEventListener('click', () => {
       document.getElementById('sidebar').classList.toggle('collapsed');

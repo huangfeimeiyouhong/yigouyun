@@ -296,7 +296,8 @@
 
       errorMsg.style.display = 'none';
       DataStore.set('currentUser', user);
-      window.location.href = 'dashboard.html';
+      var _redirect = new URLSearchParams(window.location.search).get('redirect');
+      window.location.href = 'dashboard.html' + (_redirect || '');
     });
 
     document.getElementById('password').addEventListener('keydown', e => {
