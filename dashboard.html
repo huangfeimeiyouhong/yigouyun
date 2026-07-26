@@ -2325,14 +2325,14 @@
       var paged = users.slice((state.currentPage - 1) * state.pageSize, state.currentPage * state.pageSize);
       el.innerHTML = `
         <div class="card">
-          <div class="card-header"><div class="card-title">用户管理</div></div>
+          <div class="card-header"><div class="card-title">用户管理</div><button class="btn btn-sm btn-primary" onclick="openUserModal()">+ 新增用户</button></div>
           <div class="card-body">
             ${renderTable(['ID', '账号', '姓名', '角色', '所属食堂', '电话', '最后登录', '状态', '操作'],
               paged.map(u => {
                 const canteen = DB.canteens.find(c => c.id === u.canteenId);
                 const roleTag = u.role === 'admin' ? '<span class="tag tag-red">平台管理员</span>' : u.role === 'canteenAdmin' ? '<span class="tag tag-blue">食堂管理员</span>' : u.role === 'staff' ? '<span class="tag tag-green">从业人员</span>' : '<span class="tag tag-orange">监管用户</span>';
                 const statusTag = u.status ? '<span class="tag tag-green">正常</span>' : '<span class="tag tag-gray">禁用</span>';
-                return [u.id, u.username, u.realName, roleTag, canteen ? canteen.name : '-', u.phone, u.lastLogin, statusTag, '<button class="btn btn-sm btn-default">编辑</button>'];
+                return [u.id, u.username, u.realName, roleTag, canteen ? canteen.name : '-', u.phone, u.lastLogin, statusTag, '<button class="btn btn-sm btn-default" onclick="editUser(' + u.id + ')">编辑</button>'];
               }))
             }
             ${renderPaginationBar(state, 'goToSysPage', totalCount)}
@@ -2421,6 +2421,111 @@
       __sysParamEditing = false;
       renderSysParams();
       showToast('系统参数已保存', 'success');
+    };
+
+    // ===== 用户管理编辑 =====
+    var __editingUserId = null;
+
+    window.openUserModal = function() {
+      __editingUserId = null;
+      openModal('新增用户',
+        `<div class="form-group"><label>账号 <span class="required">*</span></label><input type="text" id="uUsername" placeholder="登录账号"></div>
+         <div class="form-group"><label>姓名 <span class="required">*</span></label><input type="text" id="uRealName" placeholder="真实姓名"></div>
+         <div class="form-group"><label>角色 <span class="required">*</span></label>
+           <select id="uRole">
+             <option value="">请选择角色</option>
+             <option value="admin">平台管理员</option>
+             <option value="canteenAdmin">食堂管理员</option>
+             <option value="staff">从业人员</option>
+             <option value="inspector">监管用户</option>
+           </select>
+         </div>
+         <div class="form-group"><label>所属食堂</label>
+           <select id="uCanteenId">
+             <option value="">无（平台管理员/监管用户）</option>${DB.canteens.filter(c => c.status).map(c => '<option value="' + c.id + '">' + c.name + '</option>').join('')}
+           </select>
+         </div>
+         <div class="form-group"><label>联系电话</label><input type="text" id="uPhone" placeholder="手机号码"></div>
+         <div class="form-group"><label>初始密码</label><input type="text" id="uPassword" value="123456" placeholder="默认 123456"></div>
+         <div class="form-group"><label>状态</label>
+           <select id="uStatus">
+             <option value="1">正常</option>
+             <option value="0">禁用</option>
+           </select>
+         </div>`,
+        '<button class="btn btn-default" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveUser()">保存</button>'
+      );
+    };
+
+    window.editUser = function(id) {
+      var u = DB.users.find(x => x.id === id);
+      if (!u) return;
+      __editingUserId = id;
+      openModal('编辑用户 - ' + u.realName,
+        `<div class="form-group"><label>账号 <span class="required">*</span></label><input type="text" id="uUsername" value="${u.username}"></div>
+         <div class="form-group"><label>姓名 <span class="required">*</span></label><input type="text" id="uRealName" value="${u.realName}"></div>
+         <div class="form-group"><label>角色 <span class="required">*</span></label>
+           <select id="uRole">
+             <option value="admin"${u.role === 'admin' ? ' selected' : ''}>平台管理员</option>
+             <option value="canteenAdmin"${u.role === 'canteenAdmin' ? ' selected' : ''}>食堂管理员</option>
+             <option value="staff"${u.role === 'staff' ? ' selected' : ''}>从业人员</option>
+             <option value="inspector"${u.role === 'inspector' ? ' selected' : ''}>监管用户</option>
+           </select>
+         </div>
+         <div class="form-group"><label>所属食堂</label>
+           <select id="uCanteenId">
+             <option value=""${!u.canteenId ? ' selected' : ''}>无（平台管理员/监管用户）</option>${DB.canteens.filter(c => c.status).map(c => '<option value="' + c.id + '"' + (u.canteenId === c.id ? ' selected' : '') + '>' + c.name + '</option>').join('')}
+           </select>
+         </div>
+         <div class="form-group"><label>联系电话</label><input type="text" id="uPhone" value="${u.phone || ''}"></div>
+         <div class="form-group"><label>状态</label>
+           <select id="uStatus">
+             <option value="1"${u.status ? ' selected' : ''}>正常</option>
+             <option value="0"${!u.status ? ' selected' : ''}>禁用</option>
+           </select>
+         </div>`,
+        '<button class="btn btn-default" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveUser()">保存</button>'
+      );
+    };
+
+    window.saveUser = function() {
+      var username = document.getElementById('uUsername').value.trim();
+      var realName = document.getElementById('uRealName').value.trim();
+      var role = document.getElementById('uRole').value;
+      var canteenId = parseInt(document.getElementById('uCanteenId').value) || null;
+      var phone = document.getElementById('uPhone').value.trim();
+      var status = document.getElementById('uStatus').value === '1';
+
+      if (!username) { showToast('请填写账号', 'warning'); return; }
+      if (!realName) { showToast('请填写姓名', 'warning'); return; }
+      if (!role) { showToast('请选择角色', 'warning'); return; }
+
+      // 账号唯一性检查
+      var existing = DB.users.find(u => u.username === username && u.id !== __editingUserId);
+      if (existing) { showToast('该账号已存在', 'error'); return; }
+
+      if (__editingUserId) {
+        // 编辑
+        var u = DB.users.find(x => x.id === __editingUserId);
+        if (u) {
+          u.username = username; u.realName = realName; u.role = role;
+          u.canteenId = canteenId; u.phone = phone; u.status = status;
+          DataStore.set('users', DB.users);
+        }
+        showToast('用户信息已更新', 'success');
+      } else {
+        // 新增
+        var newId = Math.max(...DB.users.map(x => x.id), 0) + 1;
+        DB.users.push({
+          id: newId, username, realName, role, password: document.getElementById('uPassword') ? document.getElementById('uPassword').value : '123456',
+          canteenId, phone, status,
+          lastLogin: '-', createTime: new Date().toISOString().slice(0, 16).replace('T', ' ')
+        });
+        DataStore.set('users', DB.users);
+        showToast('用户已创建，默认密码：123456', 'success');
+      }
+      closeModal();
+      renderSystem(document.getElementById('content'));
     };
 
     // ===================== 启动 =====================
