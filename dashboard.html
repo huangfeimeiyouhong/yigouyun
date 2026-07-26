@@ -656,7 +656,7 @@
             <div class="user-avatar" id="userAvatar"></div>
             <div class="user-name" id="userName"></div>
             <div class="user-dropdown" id="userDropdown">
-              <div class="user-dropdown-item" onclick="showToast('个人资料功能开发中', 'info')">个人资料</div>
+              <div class="user-dropdown-item" onclick="showProfile()">个人资料</div>
               <div class="user-dropdown-item" onclick="logout()">退出登录</div>
             </div>
           </div>
@@ -1313,7 +1313,7 @@
             <option value="low">低危</option>
           </select>
           <input type="text" id="alertSearchInput" placeholder="搜索预警类型/位置" oninput="filterAlertList()">
-          <button class="btn btn-primary" onclick="showToast('导出报表功能开发中', 'info')">导出报表</button>
+          <button class="btn btn-primary" onclick="exportTableToCsv('预警信息报表.csv')">导出报表</button>
         </div>
         <div class="card">
           <div class="card-body" id="alertTableBody">
@@ -1665,7 +1665,7 @@
           <select id="persHealthFilter" onchange="filterPersonList()"><option value="">全部健康证状态</option><option>有效</option><option>即将过期</option><option>已过期</option></select>
           <input type="text" id="persSearchInput" placeholder="搜索姓名/编号/电话" oninput="filterPersonList()">
           ${currentUser.role !== 'staff' ? '<button class="btn btn-primary" onclick="openPersonModal()">+ 新增人员</button>' : ''}
-          ${currentUser.role !== 'staff' ? '<button class="btn btn-default" onclick="showToast(\'批量导入功能开发中\', \'info\')">批量导入</button>' : ''}
+          ${currentUser.role !== 'staff' ? '<button class="btn btn-default" onclick="openBatchImport(\'person\')">批量导入</button>' : ''}
           ${currentUser.role !== 'staff' ? '<button class="btn btn-danger" onclick="batchDeletePersons()">批量删除</button>' : ''}
         </div>
         <div class="card">
@@ -1783,6 +1783,126 @@
       DataStore.set('personnel', DB.personnel);
       showToast('已删除 ' + checked.length + ' 条记录', 'success');
       renderPersonnel(document.getElementById('content'));
+    };
+
+    // 通用：将当前页面表格（不含复选框列与操作列）导出为 CSV
+    window.exportTableToCsv = function(fileName) {
+      const table = document.querySelector('#content table');
+      if (!table) { showToast('当前页面无可导出数据', 'warning'); return; }
+      const rowsArr = [];
+      table.querySelectorAll('tr').forEach(tr => {
+        const cells = Array.from(tr.querySelectorAll('th, td'));
+        if (!cells.length) return;
+        let row = cells.map(c => ({ el: c, txt: (c.textContent || '').trim().replace(/\s+/g, ' ') }));
+        if (row[0].el.querySelector('input[type=checkbox]')) row.shift();
+        if (row.length && row[row.length - 1].el.querySelector('button')) row.pop();
+        if (row.length) rowsArr.push(row.map(c => c.txt));
+      });
+      if (rowsArr.length < 2) { showToast('没有可导出的数据行', 'warning'); return; }
+      const csv = '﻿' + rowsArr.map(r => r.map(c => '"' + String(c).replace(/"/g, '""') + '"').join(',')).join('\r\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = fileName; a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+      showToast('报表已导出（' + (rowsArr.length - 1) + ' 条）', 'success');
+    };
+
+    // 个人资料
+    window.showProfile = function() {
+      const u = currentUser;
+      const roleName = (roleConfig[u.role] && roleConfig[u.role].name) || u.role;
+      const canteen = u.canteenId ? (DB.canteens.find(c => c.id === u.canteenId) || {}) : null;
+      openModal('个人资料', `
+        <div style="display:flex;gap:16px;align-items:center;margin-bottom:16px">
+          <div style="width:64px;height:64px;border-radius:50%;background:#1f8fff;color:#fff;display:flex;align-items:center;justify-content:center;font-size:26px">${(u.realName || u.username || '?').charAt(0)}</div>
+          <div><div style="font-size:18px;font-weight:600">${u.realName || '-'}</div><div style="color:#888">${u.username}</div></div>
+        </div>
+        <div class="detail-grid">
+          <div class="detail-item"><div class="label">角色</div><div class="value">${roleName}</div></div>
+          <div class="detail-item"><div class="label">所属食堂</div><div class="value">${canteen ? canteen.name : '平台 / 全部'}</div></div>
+          <div class="detail-item"><div class="label">联系电话</div><div class="value">${u.phone || '-'}</div></div>
+          <div class="detail-item"><div class="label">最后登录</div><div class="value">${u.lastLogin || '-'}</div></div>
+          <div class="detail-item"><div class="label">状态</div><div class="value">${u.status ? '正常' : '停用'}</div></div>
+        </div>
+      `, '<button class="btn btn-primary" onclick="closeModal()">关闭</button>');
+    };
+
+    // 批量导入：CSV 解析（支持引号转义）
+    function parseCsvRow(text) {
+      const lines = text.replace(/\r/g, '').split('\n').filter(l => l.trim() !== '');
+      return lines.map(line => {
+        const out = []; let cur = ''; let q = false;
+        for (let i = 0; i < line.length; i++) {
+          const ch = line[i];
+          if (q) { if (ch === '"') { if (line[i + 1] === '"') { cur += '"'; i++; } else q = false; } else cur += ch; }
+          else { if (ch === '"') q = true; else if (ch === ',') { out.push(cur); cur = ''; } else cur += ch; }
+        }
+        out.push(cur); return out;
+      });
+    }
+    window.downloadImportTemplate = function(kind) {
+      let header, fileName;
+      if (kind === 'person') { header = ['员工编号', '姓名', '所属食堂', '岗位', '联系电话', '健康证状态', '健康证到期日', '入职日期', '状态']; fileName = '人员导入模板.csv'; }
+      else { header = ['门禁编号', '名称', '所属食堂', '位置', '类型', '状态', '安装日期']; fileName = '门禁导入模板.csv'; }
+      const csv = '﻿' + header.map(h => '"' + h + '"').join(',') + '\r\n';
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = fileName; a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+    };
+    window.openBatchImport = function(kind) {
+      const cols = kind === 'person'
+        ? '员工编号, 姓名, 所属食堂, 岗位, 联系电话, 健康证状态(有效/即将过期/已过期), 健康证到期日, 入职日期, 状态(在职/离职)'
+        : '门禁编号, 名称, 所属食堂, 位置, 类型, 状态(正常/离线), 安装日期';
+      openModal('批量导入' + (kind === 'person' ? '人员' : '门禁'), `
+        <p style="color:#666;font-size:13px">请下载模板，按列填写后上传 CSV 文件（UTF-8 编码，首行为表头）。</p>
+        <div style="margin:8px 0"><b>模板列：</b><span style="color:#1f8fff">${cols}</span></div>
+        <div style="display:flex;gap:10px;align-items:center;margin-top:10px">
+          <button class="btn btn-default" onclick="downloadImportTemplate('${kind}')">下载模板</button>
+          <input type="file" id="importFile" accept=".csv,text/csv" style="flex:1">
+        </div>
+        <div id="importMsg" style="margin-top:10px;font-size:13px;color:#888"></div>
+      `, '<button class="btn btn-default" onclick="closeModal()">取消</button> <button class="btn btn-primary" onclick="doBatchImport(\'' + kind + '\')">开始导入</button>');
+    };
+    window.doBatchImport = function(kind) {
+      const fileInput = document.getElementById('importFile');
+      const msg = document.getElementById('importMsg');
+      if (!fileInput || !fileInput.files || !fileInput.files.length) { showToast('请先选择 CSV 文件', 'warning'); return; }
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const rows = parseCsvRow(e.target.result);
+          if (rows.length < 2) { if (msg) msg.textContent = '文件中没有数据行'; return; }
+          const header = rows[0].map(h => h.trim());
+          const dataRows = rows.slice(1);
+          let added = 0;
+          if (kind === 'person') {
+            if (!['员工编号', '姓名', '所属食堂'].every(c => header.includes(c))) { if (msg) msg.textContent = '表头不匹配，请使用模板'; return; }
+            const maxId = DB.personnel.reduce((m, p) => Math.max(m, p.id || 0), 0);
+            dataRows.forEach((r, ri) => {
+              const obj = {}; header.forEach((h, i) => obj[h] = r[i] ? r[i].trim() : '');
+              if (!obj['员工编号'] || !obj['姓名']) return;
+              const canteen = DB.canteens.find(c => c.name === obj['所属食堂']);
+              DB.personnel.push({ id: maxId + ri + 1, empNo: obj['员工编号'], name: obj['姓名'], canteenId: canteen ? canteen.id : null, position: obj['岗位'] || '', phone: obj['联系电话'] || '', healthStatus: ['有效', '即将过期', '已过期'].includes(obj['健康证状态']) ? obj['健康证状态'] : '有效', healthExpire: obj['健康证到期日'] || '', entryDate: obj['入职日期'] || '', status: obj['状态'] === '离职' ? false : true, facePhoto: null });
+              added++;
+            });
+            DataStore.set('personnel', DB.personnel);
+          } else {
+            if (!['门禁编号', '名称', '所属食堂'].every(c => header.includes(c))) { if (msg) msg.textContent = '表头不匹配，请使用模板'; return; }
+            const maxId = DB.access.reduce((m, p) => Math.max(m, p.id || 0), 0);
+            dataRows.forEach((r, ri) => {
+              const obj = {}; header.forEach((h, i) => obj[h] = r[i] ? r[i].trim() : '');
+              if (!obj['门禁编号'] || !obj['名称']) return;
+              const canteen = DB.canteens.find(c => c.name === obj['所属食堂']);
+              DB.access.push({ id: maxId + ri + 1, code: obj['门禁编号'], name: obj['名称'], canteenId: canteen ? canteen.id : null, location: obj['位置'] || '', type: obj['类型'] || '人脸识别', status: obj['状态'] === '离线' ? '离线' : '正常', ip: '', lastEvent: obj['安装日期'] || '', eventType: '', eventPerson: '' });
+              added++;
+            });
+            DataStore.set('access', DB.access);
+          }
+          if (added > 0) { showToast('成功导入 ' + added + ' 条记录', 'success'); closeModal(); if (kind === 'person') renderPersonnel(document.getElementById('content')); else renderAccess(document.getElementById('content')); }
+          else if (msg) msg.textContent = '没有有效数据被导入（请检查必填列）';
+        } catch (err) { if (msg) msg.textContent = '解析失败：' + err.message; }
+      };
+      reader.readAsText(fileInput.files[0], 'UTF-8');
     };
 
     window.openPersonModal = function() {
@@ -2052,7 +2172,7 @@
           <select id="accStatusFilter" onchange="filterAccessList()"><option value="">全部状态</option><option>正常</option><option>离线</option></select>
           <input type="text" id="accSearchInput" placeholder="搜索门禁名称" oninput="filterAccessList()">
           <button class="btn btn-primary" onclick="openAccessModal()">+ 添加门禁</button>
-          <button class="btn btn-default" onclick="showToast('批量导入功能开发中', 'info')">批量导入</button>
+          <button class="btn btn-default" onclick="openBatchImport('access')">批量导入</button>
         </div>
         <div class="card">
           <div class="card-body" id="accTableBody">
