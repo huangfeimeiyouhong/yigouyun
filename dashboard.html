@@ -2807,45 +2807,274 @@
       showToast('保存成功', 'success'); renderRecipes(document.getElementById('content'));
     };
 
-    // ===== 视频监控 =====
-    function renderMonitor(el) {
-      setBreadcrumb(['首页', '视频监控']);
-      let list = currentUser.canteenId ? DB.cameras.filter(c => c.canteenId === currentUser.canteenId) : DB.cameras;
-      const canteenOpts = DB.canteens.filter(c => c.status).map(c => `<option value="${c.id}">${c.name}</option>`).join('');
-      el.innerHTML = `
-        <div class="filter-bar">
-          <select onchange="filterMonitorList(this)">
-            <option value="">全部食堂</option>${canteenOpts}
-          </select>
-        </div>
-        <div class="monitor-grid" id="monitorGrid">
-          ${list.map(c => {
-            const canteen = DB.canteens.find(ct => ct.id === c.canteenId);
-            const statusIcon = c.status === '在线' ? '<span class="status-dot online"></span>' : '<span class="status-dot offline"></span>';
-            return `<div class="monitor-card" data-canteen="${c.canteenId}">
-              <div class="monitor-header">
-                <span>${c.name} | ${canteen ? canteen.name : '-'}</span>
-                <div class="monitor-status">${statusIcon}${c.status}</div>
-              </div>
-              <div class="monitor-body">
-                <div class="monitor-placeholder">
-                  <div class="icon">&#127909;</div>
-                  <div>${c.status === '在线' ? '实时监控画面中' : '设备离线'}</div>
-                  <div style="font-size:12px;color:#555;margin-top:4px">${c.resolution} | ${c.direction}</div>
-                </div>
-              </div>
-            </div>`;
-          }).join('')}
-        </div>
-      `;
+    // ===== 视频监控（实时 + 回放） =====
+    window.monitorState = window.monitorState || {
+      mode: 'live', layout: 4, order: [], slots: [], offset: 0,
+      carousel: false, carouselInterval: 5, watermark: true, dragFrom: -1,
+      playback: { camId: null, date: new Date().toISOString().slice(0, 10), start: '08:00', end: '09:00', speed: 1, pos: 0, playing: false }
+    };
+    let __monitorRAF = null, __monitorTimer = null, __monitorLast = 0;
+
+    function monitorAllCams() {
+      return DB.cameras.slice();
+    }
+    function ensureMonitorOrder() {
+      const ms = window.monitorState;
+      const all = monitorAllCams().map(c => c.id);
+      if (!ms.order || !ms.order.length || ms.order.length !== all.length || ms.order.some(id => !all.includes(id))) {
+        ms.order = all.slice();
+      }
+    }
+    function monitorRebuildSlots() {
+      const ms = window.monitorState;
+      const order = ms.order; if (!order.length) { ms.slots = []; return; }
+      const n = Math.min(ms.layout, order.length);
+      ms.slots = [];
+      for (let i = 0; i < n; i++) ms.slots.push(order[(ms.offset + i) % order.length]);
     }
 
-    window.filterMonitorList = function(sel) {
-      const val = sel.value;
-      document.querySelectorAll('#monitorGrid .monitor-card').forEach(card => {
-        card.style.display = (!val || card.dataset.canteen === val) ? '' : 'none';
+    function drawMonitorScene(ctx, W, H, cam, sec, opts) {
+      opts = opts || {};
+      const g = ctx.createLinearGradient(0, 0, 0, H);
+      g.addColorStop(0, '#0b1a12'); g.addColorStop(1, '#06120c');
+      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+      ctx.strokeStyle = 'rgba(120,160,130,0.18)'; ctx.lineWidth = 1;
+      for (let i = 0; i <= 8; i++) { const y = H * 0.55 + i * (H * 0.45 / 8); ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+      ctx.fillStyle = 'rgba(80,110,90,0.45)'; ctx.fillRect(W * 0.08, H * 0.46, W * 0.84, H * 0.12);
+      const px = W * 0.5 + Math.sin(sec * 0.6) * W * 0.32;
+      const py = H * 0.74 + Math.cos(sec * 0.4) * H * 0.03;
+      ctx.fillStyle = '#ffd27f'; ctx.beginPath(); ctx.arc(px, py - 20, 11, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#4ea1ff'; ctx.fillRect(px - 10, py - 9, 20, 30);
+      ctx.fillStyle = 'rgba(255,255,255,0.03)'; for (let y = 0; y < H; y += 4) ctx.fillRect(0, y, W, 1);
+      ctx.fillStyle = '#9effa0'; ctx.font = 'bold 15px monospace'; ctx.textAlign = 'left';
+      ctx.fillText((cam ? cam.name : 'CAM') + '  ' + (cam ? cam.location : ''), 12, 22);
+      if (opts.rec) { ctx.fillStyle = '#ff4d4f'; ctx.beginPath(); ctx.arc(36, 40, 5, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#fff'; ctx.font = '12px monospace'; ctx.fillText('REC', 46, 44); }
+      ctx.fillStyle = '#cfe'; ctx.font = '13px monospace'; ctx.textAlign = 'right';
+      ctx.fillText(opts.timeStr || (opts.playback ? (Math.floor(sec) + 's') : ''), W - 12, H - 12);
+      if (opts.watermark) { ctx.fillStyle = 'rgba(255,255,255,0.16)'; ctx.font = '14px monospace'; ctx.textAlign = 'right'; ctx.fillText('易购云食安 · ' + (cam ? cam.name : ''), W - 12, 40); }
+    }
+
+    function playbackTotalSec() {
+      const pb = window.monitorState.playback;
+      const sh = pb.start.split(':').map(Number), eh = pb.end.split(':').map(Number);
+      return Math.max(1, (eh[0] * 3600 + eh[1] * 60) - (sh[0] * 3600 + sh[1] * 60));
+    }
+    function playbackTotalText() {
+      const t = playbackTotalSec(); const h = Math.floor(t / 3600), m = Math.round((t % 3600) / 60);
+      return (h ? h + '时' : '') + m + '分';
+    }
+    function monitorPBClockText() {
+      const pb = window.monitorState.playback;
+      const sec = pb.pos * playbackTotalSec();
+      const sh = pb.start.split(':').map(Number);
+      const total = sh[0] * 3600 + sh[1] * 60 + sec;
+      const hh = String(Math.floor(total / 3600)).padStart(2, '0');
+      const mm = String(Math.floor((total % 3600) / 60)).padStart(2, '0');
+      const ss = String(Math.floor(total % 60)).padStart(2, '0');
+      return pb.date + ' ' + hh + ':' + mm + ':' + ss;
+    }
+    function updatePBProgressUI() {
+      const pb = window.monitorState.playback;
+      const range = document.getElementById('pbRange'); if (range) range.value = Math.round(pb.pos * 1000);
+      const tt = document.getElementById('pbTime'); if (tt) tt.textContent = monitorPBClockText();
+    }
+
+    function monitorLoop(ts) {
+      __monitorRAF = requestAnimationFrame(monitorLoop);
+      const grid = document.getElementById('monitorGrid');
+      if (!grid) return;
+      const ms = window.monitorState;
+      const dt = __monitorLast ? (ts - __monitorLast) / 1000 : 0; __monitorLast = ts;
+      if (ms.mode === 'playback' && ms.playback.playing) {
+        const total = playbackTotalSec();
+        ms.playback.pos += dt * ms.playback.speed / total;
+        if (ms.playback.pos >= 1) { ms.playback.pos = 1; ms.playback.playing = false; const b = document.querySelector('.pb-controls .btn-primary'); if (b) b.textContent = '播放'; }
+        updatePBProgressUI();
+      }
+      const panels = grid.querySelectorAll('.monitor-panel');
+      panels.forEach((panel, idx) => {
+        const cv = panel.querySelector('canvas'); if (!cv) return;
+        const ctx = cv.getContext('2d');
+        const cam = DB.cameras.find(c => c.id === panel.dataset.camid);
+        let sec, timeStr, isPlayback = false, rec = true;
+        if (ms.mode === 'playback') { isPlayback = true; rec = false; sec = ms.playback.pos * playbackTotalSec(); timeStr = monitorPBClockText(); }
+        else { sec = (ts / 1000) + idx * 13; timeStr = new Date().toLocaleString('zh-CN'); }
+        drawMonitorScene(ctx, cv.width, cv.height, cam, sec, { watermark: ms.watermark, rec: rec, playback: isPlayback, timeStr: timeStr });
       });
+    }
+    function startMonitorLoop() { stopMonitorLoop(); __monitorLast = 0; __monitorRAF = requestAnimationFrame(monitorLoop); }
+    function stopMonitorLoop() { if (__monitorRAF) { cancelAnimationFrame(__monitorRAF); __monitorRAF = null; } stopMonitorCarousel(); }
+    function startMonitorCarousel() {
+      stopMonitorCarousel();
+      __monitorTimer = setInterval(() => {
+        const ms = window.monitorState; if (!ms.carousel) return;
+        ms.offset = (ms.offset + 1) % ms.order.length; monitorRebuildSlots(); monitorRenderGrid();
+      }, ms.carouselInterval * 1000);
+    }
+    function stopMonitorCarousel() { if (__monitorTimer) { clearInterval(__monitorTimer); __monitorTimer = null; } }
+
+    function monitorRenderGrid() {
+      const ms = window.monitorState;
+      const grid = document.getElementById('monitorGrid'); if (!grid) return;
+      if (ms.mode === 'playback') {
+        grid.className = 'monitor-grid live-1';
+        const cam = DB.cameras.find(c => c.id === ms.playback.camId) || DB.cameras[0];
+        grid.innerHTML = `<div class="monitor-panel playback" data-camid="${cam ? cam.id : ''}">
+          <canvas width="640" height="360"></canvas>
+          <div class="panel-bar"><span style="color:#ff7a7a">● 回放</span><span>${cam ? cam.name : ''}</span><span class="status-chip">${ms.playback.date} ${ms.playback.start}-${ms.playback.end} · ${ms.playback.speed}x</span></div>
+          <div class="panel-actions">
+            <button onclick="monitorScreenshot('${cam ? cam.id : ''}')">截图</button>
+            <button onclick="monitorClip('${cam ? cam.id : ''}')">片段下载</button>
+            <button onclick="monitorFullscreen(this.closest('.monitor-panel'))">全屏</button>
+          </div>
+        </div>`;
+        const strip = document.getElementById('playbackStrip');
+        if (strip) strip.innerHTML = monitorAllCams().map(c => `<div class="playback-thumb ${c.id === (cam ? cam.id : '') ? 'active' : ''}" onclick="monitorPBSelect('${c.id}')">
+          <canvas width="160" height="90" data-thumb="${c.id}"></canvas>
+          <div style="color:#cfe;font-size:11px;padding:2px 4px">${c.name}</div></div>`).join('');
+      } else {
+        grid.className = 'monitor-grid live-' + ms.layout;
+        grid.innerHTML = ms.slots.map((camId, i) => {
+          const cam = DB.cameras.find(c => c.id === camId);
+          const opts = monitorAllCams().map(c => `<option value="${c.id}" ${c.id === camId ? 'selected' : ''}>${c.name}</option>`).join('');
+          return `<div class="monitor-panel" draggable="true" data-camid="${camId}" data-idx="${i}" ondragstart="monitorDragStart(${i})" ondragover="event.preventDefault()" ondrop="monitorDrop(${i})">
+            <canvas width="640" height="360"></canvas>
+            <div class="panel-bar"><span class="drag" title="拖动调整播放顺序">&#10303;</span>
+              <select onchange="monitorBindSlot(${i}, this.value)">${opts}</select>
+              <span class="status-chip">${cam ? cam.status : ''}</span></div>
+            <div class="panel-actions">
+              <button onclick="monitorScreenshot('${camId}')">截图</button>
+              <button onclick="monitorClip('${camId}')">片段下载</button>
+              <button onclick="monitorFullscreen(this.closest('.monitor-panel'))">全屏</button>
+            </div></div>`;
+        }).join('');
+      }
+    }
+    function monitorDrawThumbs() {
+      document.querySelectorAll('#playbackStrip .playback-thumb canvas').forEach(cv => {
+        const cam = DB.cameras.find(c => c.id === cv.dataset.thumb);
+        if (cam) drawMonitorScene(cv.getContext('2d'), cv.width, cv.height, cam, 7, { watermark: false, rec: false });
+      });
+    }
+    function monitorRenderToolbar() {
+      const ms = window.monitorState;
+      const sl = document.getElementById('segLayout'); if (sl) sl.querySelectorAll('button').forEach(b => b.classList.toggle('active', Number(b.dataset.n) === ms.layout));
+      const sm = document.getElementById('segMode'); if (sm) sm.querySelectorAll('button').forEach(b => b.classList.toggle('active', (b.textContent === '实时' && ms.mode === 'live') || (b.textContent === '回放' && ms.mode === 'playback')));
+      const bc = document.getElementById('btnCarousel'); if (bc) { bc.classList.toggle('active', ms.carousel); bc.textContent = ms.carousel ? '已开启' : '关闭'; }
+      const bw = document.getElementById('btnWatermark'); if (bw) { bw.classList.toggle('active', ms.watermark); bw.textContent = ms.watermark ? '已开启' : '关闭'; }
+      monitorRenderPlaybackBar();
+      const strip = document.getElementById('playbackStrip'); if (strip) strip.style.display = ms.mode === 'playback' ? 'flex' : 'none';
+    }
+    function monitorRenderPlaybackBar() {
+      const bar = document.getElementById('playbackBar'); if (!bar) return;
+      const ms = window.monitorState;
+      if (ms.mode !== 'playback') { bar.innerHTML = ''; return; }
+      const pb = ms.playback; const speeds = [0.5, 1, 2, 4, 8, 16];
+      bar.innerHTML = `<div class="pb-controls">
+        <div class="grp"><label>回放日期</label><input type="date" value="${pb.date}" onchange="monitorPBDate(this.value)"></div>
+        <div class="grp"><label>起</label><input type="time" value="${pb.start}" onchange="monitorPBStart(this.value)"></div>
+        <div class="grp"><label>止</label><input type="time" value="${pb.end}" onchange="monitorPBEnd(this.value)"></div>
+        <div class="grp"><label>倍速</label><div class="seg" id="segSpeed">${speeds.map(s => `<button class="${pb.speed === s ? 'active' : ''}" onclick="monitorPBSetSpeed(${s})">${s}x</button>`).join('')}</div></div>
+        <button class="btn btn-primary" onclick="monitorPBToggle()">${pb.playing ? '暂停' : '播放'}</button>
+        <div class="pb-progress"><span id="pbTime">${monitorPBClockText()}</span>
+          <input type="range" id="pbRange" min="0" max="1000" value="${Math.round(pb.pos * 1000)}" oninput="monitorPBSeek(this.value/1000)">
+          <span class="status-chip">片段 ${playbackTotalText()}</span></div>
+        <button class="btn-mini" onclick="monitorScreenshot('${pb.camId}')">截图</button>
+        <button class="btn-mini" onclick="monitorClip('${pb.camId}')">片段下载</button>
+      </div>`;
+    }
+
+    function renderMonitor(el) {
+      setBreadcrumb(['首页', '视频监控']);
+      const ms = window.monitorState;
+      ensureMonitorOrder(); monitorRebuildSlots();
+      const canteenOpts = DB.canteens.filter(c => c.status).map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+      el.innerHTML = `
+        <div class="monitor-toolbar">
+          <div class="grp"><label>布局</label><div class="seg" id="segLayout">
+            <button data-n="1" class="${ms.layout === 1 ? 'active' : ''}" onclick="monitorSetLayout(1)">单画面</button>
+            <button data-n="4" class="${ms.layout === 4 ? 'active' : ''}" onclick="monitorSetLayout(4)">四分屏</button>
+            <button data-n="9" class="${ms.layout === 9 ? 'active' : ''}" onclick="monitorSetLayout(9)">九分屏</button>
+          </div></div>
+          <div class="grp"><label>轮播</label>
+            <button id="btnCarousel" class="btn-mini ${ms.carousel ? 'active' : ''}" onclick="monitorToggleCarousel()">${ms.carousel ? '已开启' : '关闭'}</button>
+            <label>间隔</label><select id="carouselInterval" onchange="monitorSetInterval(this.value)">
+              ${[3, 5, 10, 15, 30].map(s => `<option value="${s}" ${ms.carouselInterval === s ? 'selected' : ''}>${s}秒</option>`).join('')}
+            </select></div>
+          <div class="grp"><label>水印</label>
+            <button id="btnWatermark" class="btn-mini ${ms.watermark ? 'active' : ''}" onclick="monitorToggleWatermark()">${ms.watermark ? '已开启' : '关闭'}</button></div>
+          <div class="grp"><label>模式</label><div class="seg" id="segMode">
+            <button class="${ms.mode === 'live' ? 'active' : ''}" onclick="monitorSetMode('live')">实时</button>
+            <button class="${ms.mode === 'playback' ? 'active' : ''}" onclick="monitorSetMode('playback')">回放</button>
+          </div></div>
+          <div class="grp"><label>食堂</label><select id="monitorCanteen" onchange="monitorFilterCanteen(this.value)">
+            <option value="">全部食堂</option>${canteenOpts}</select></div>
+          <div class="grp"><button class="btn-mini" onclick="monitorScreenshotAll()">截图全部</button></div>
+        </div>
+        <div id="playbackBar"></div>
+        <div class="monitor-grid live-${ms.layout}" id="monitorGrid"></div>
+        <div class="playback-strip" id="playbackStrip" style="display:none"></div>
+        <div style="color:#888;font-size:12px;margin-top:8px">提示：拖动面板左上角 ⠿ 可调整播放顺序；轮播开启后按设定间隔自动切换通道；回放支持自定义日期、起止时间、多倍速与进度拖拽。</div>
+      `;
+      monitorRenderGrid();
+      if (ms.mode === 'playback') { monitorDrawThumbs(); document.getElementById('playbackStrip').style.display = 'flex'; }
+      startMonitorLoop();
+    }
+
+    // ----- 监控控件交互 -----
+    window.monitorSetLayout = function(n) { const ms = window.monitorState; ms.layout = n; ms.offset = 0; monitorRebuildSlots(); monitorRenderToolbar(); monitorRenderGrid(); };
+    window.monitorToggleCarousel = function() { const ms = window.monitorState; ms.carousel = !ms.carousel; monitorRenderToolbar(); if (ms.carousel) startMonitorCarousel(); else stopMonitorCarousel(); };
+    window.monitorSetInterval = function(sec) { const ms = window.monitorState; ms.carouselInterval = Number(sec); if (ms.carousel) { stopMonitorCarousel(); startMonitorCarousel(); } };
+    window.monitorToggleWatermark = function() { const ms = window.monitorState; ms.watermark = !ms.watermark; monitorRenderToolbar(); if (ms.mode === 'playback') monitorDrawThumbs(); };
+    window.monitorSetMode = function(m) { const ms = window.monitorState; ms.mode = m; if (m === 'playback' && !ms.playback.camId) ms.playback.camId = ms.slots[0] || monitorAllCams()[0].id; monitorRenderToolbar(); monitorRenderGrid(); if (m === 'playback') { monitorDrawThumbs(); document.getElementById('playbackStrip').style.display = 'flex'; } };
+    window.monitorBindSlot = function(i, camId) { const ms = window.monitorState; ms.slots[i] = camId; monitorRenderGrid(); };
+    window.monitorDragStart = function(i) { window.monitorState.dragFrom = i; };
+    window.monitorDrop = function(i) {
+      const ms = window.monitorState; const f = ms.dragFrom; if (f < 0 || f === i) return;
+      const t = ms.slots[f]; ms.slots[f] = ms.slots[i]; ms.slots[i] = t;
+      const a = ms.offset + f, b = ms.offset + i; const o = ms.order[a]; ms.order[a] = ms.order[b]; ms.order[b] = o;
+      ms.dragFrom = -1; monitorRenderGrid();
     };
+    window.monitorScreenshot = function(camId) {
+      const panel = document.querySelector('#monitorGrid .monitor-panel[data-camid="' + camId + '"]'); if (!panel) return;
+      const cv = panel.querySelector('canvas'); const url = cv.toDataURL('image/png');
+      const a = document.createElement('a'); a.href = url; a.download = '截图_' + (camId || 'cam') + '_' + Date.now() + '.png'; a.click();
+      showToast('截图已保存', 'success');
+    };
+    window.monitorScreenshotAll = function() {
+      const ms = window.monitorState; const ids = ms.mode === 'playback' ? [ms.playback.camId] : ms.slots.slice();
+      ids.forEach((id, i) => setTimeout(() => window.monitorScreenshot(id), i * 300));
+      showToast('已批量截图 ' + ids.length + ' 路', 'success');
+    };
+    window.monitorClip = function(camId) {
+      const panel = document.querySelector('#monitorGrid .monitor-panel[data-camid="' + camId + '"]'); if (!panel) return;
+      const cv = panel.querySelector('canvas');
+      if (!cv.captureStream) { showToast('当前浏览器不支持片段录制', 'error'); return; }
+      try {
+        const stream = cv.captureStream(25);
+        const rec = new MediaRecorder(stream, { mimeType: 'video/webm' });
+        const chunks = [];
+        rec.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
+        rec.onstop = () => { const blob = new Blob(chunks, { type: 'video/webm' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = '片段_' + (camId || 'cam') + '_' + Date.now() + '.webm'; a.click(); setTimeout(() => URL.revokeObjectURL(url), 5000); showToast('片段下载完成', 'success'); };
+        rec.start(); showToast('正在录制片段(10秒)...', 'info');
+        setTimeout(() => { if (rec.state !== 'inactive') rec.stop(); }, 10000);
+      } catch (e) { showToast('录制失败: ' + e.message, 'error'); }
+    };
+    window.monitorFullscreen = function(el) { if (el && el.requestFullscreen) el.requestFullscreen(); };
+    window.monitorFilterCanteen = function(val) {
+      const ms = window.monitorState;
+      const all = val ? DB.cameras.filter(c => c.canteenId === Number(val)) : DB.cameras;
+      ms.order = all.map(c => c.id); ms.offset = 0; monitorRebuildSlots();
+      if (ms.mode === 'playback') ms.playback.camId = ms.slots[0];
+      monitorRenderGrid(); if (ms.mode === 'playback') monitorDrawThumbs();
+    };
+    window.monitorPBDate = function(d) { window.monitorState.playback.date = d; monitorRenderPlaybackBar(); };
+    window.monitorPBStart = function(t) { window.monitorState.playback.start = t; window.monitorState.playback.pos = 0; monitorRenderPlaybackBar(); };
+    window.monitorPBEnd = function(t) { window.monitorState.playback.end = t; window.monitorState.playback.pos = 0; monitorRenderPlaybackBar(); };
+    window.monitorPBSetSpeed = function(s) { window.monitorState.playback.speed = s; const seg = document.getElementById('segSpeed'); if (seg) seg.querySelectorAll('button').forEach(b => b.classList.toggle('active', Number(b.textContent.replace('x', '')) === s)); };
+    window.monitorPBToggle = function() { const pb = window.monitorState.playback; pb.playing = !pb.playing; const b = document.querySelector('.pb-controls .btn-primary'); if (b) b.textContent = pb.playing ? '暂停' : '播放'; };
+    window.monitorPBSeek = function(frac) { window.monitorState.playback.pos = Math.max(0, Math.min(1, frac)); const tt = document.getElementById('pbTime'); if (tt) tt.textContent = monitorPBClockText(); };
+    window.monitorPBSelect = function(camId) { window.monitorState.playback.camId = camId; monitorRenderGrid(); monitorDrawThumbs(); monitorRenderPlaybackBar(); };
 
     // ===== 食安数据（监管用户） =====
     function renderDataView(el) {
