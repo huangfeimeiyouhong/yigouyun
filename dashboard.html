@@ -732,7 +732,7 @@
         admin: ['dashboard','devices','alerts','alertReview','samples','personnel','checks','access','monitor','roles','userMgmt','sysParams','ledger','patrol','safetyInspect','recipes','patrolReview'],
         canteenAdmin: ['dashboard','userMgmt','roles','alertReview','patrolReview'],
         staff: ['samples','ledger','patrol','safetyInspect','recipes'],
-        inspector: ['dataView','monitor']
+        inspector: ['dashboard','alerts','samples','checks','patrol','safetyInspect','ledger','recipes','personnel','monitor']
       };
       DB.roles.forEach(function(r) {
         var perms = (r.permissions && r.permissions.length > 0) ? r.permissions : (DEFAULT_PERMS[r.code] || []);
@@ -746,6 +746,9 @@
       return cfg;
     }
     var roleConfig = buildRoleConfig();
+
+    // 监管用户为只读角色：可查看业务数据，但不能新增/编辑/删除
+    function isViewOnly() { return currentUser.role === 'inspector'; }
 
     let currentPage = (roleConfig[currentUser.role] && roleConfig[currentUser.role].menus[0]) ? roleConfig[currentUser.role].menus[0].key : 'dashboard';
 
@@ -1474,6 +1477,7 @@
     // ===== 留样管理 =====
     function renderSamples(el) {
       setBreadcrumb(['首页', '留样管理']);
+      const vo = isViewOnly();
       let list = currentUser.canteenId ? DB.samples.filter(s => s.canteenId === currentUser.canteenId) : DB.samples;
       window.sampPageState = window.sampPageState || { currentPage: 1, pageSize: 10 };
       var state = window.sampPageState;
@@ -1486,8 +1490,8 @@
         return [
           s.id, s.name, canteen ? canteen.name : '-', s.mealType, s.sampleDate, s.sampleTime, s.quantity, s.sampler, s.expireDate, s.storage, statusTag,
           `<button class="btn btn-sm btn-default" onclick="showSampleDetail(${s.id})">详情</button>` +
-          ` <button class="btn btn-sm btn-primary" onclick="editSample(${s.id})">编辑</button>` +
-          (s.status === '正常' ? ` <button class="btn btn-sm btn-danger" onclick="destroySample(${s.id})">销毁</button>` : '')
+          (vo ? '' : ` <button class="btn btn-sm btn-primary" onclick="editSample(${s.id})">编辑</button>`) +
+          (vo ? '' : (s.status === '正常' ? ` <button class="btn btn-sm btn-danger" onclick="destroySample(${s.id})">销毁</button>` : ''))
         ];
       });
 
@@ -1496,7 +1500,7 @@
           <select id="sampCanteenFilter" onchange="filterSampleList()"><option value="">全部食堂</option>${DB.canteens.filter(c => c.status).map(c => `<option value="${c.id}">${c.name}</option>`).join('')}</select>
           <select id="sampStatusFilter" onchange="filterSampleList()"><option value="">全部状态</option><option>正常</option><option>已销毁</option></select>
           <input type="text" id="sampSearchInput" placeholder="搜索样品名称" oninput="filterSampleList()">
-          <button class="btn btn-primary" onclick="openSampleModal()">+ 新增留样</button>
+          ${vo ? '' : '<button class="btn btn-primary" onclick="openSampleModal()">+ 新增留样</button>'}
         </div>
         <div class="card">
           <div class="card-body" id="sampTableBody">
@@ -1514,6 +1518,7 @@
     window.filterSampleList = function() {
       window.sampPageState = window.sampPageState || { currentPage: 1, pageSize: 10 };
       window.sampPageState.currentPage = 1;
+      const vo = isViewOnly();
       const canteenFilter = document.getElementById('sampCanteenFilter').value;
       const statusFilter = document.getElementById('sampStatusFilter').value;
       const keyword = (document.getElementById('sampSearchInput').value || '').trim().toLowerCase();
@@ -1530,8 +1535,8 @@
         const statusTag = s.status === '正常' ? '<span class="tag tag-green">正常</span>' : '<span class="tag tag-gray">已销毁</span>';
         return [s.id, s.name, canteen ? canteen.name : '-', s.mealType, s.sampleDate, s.sampleTime, s.quantity, s.sampler, s.expireDate, s.storage, statusTag,
           `<button class="btn btn-sm btn-default" onclick="showSampleDetail(${s.id})">详情</button>` +
-          ` <button class="btn btn-sm btn-primary" onclick="editSample(${s.id})">编辑</button>` +
-          (s.status === '正常' ? ` <button class="btn btn-sm btn-danger" onclick="destroySample(${s.id})">销毁</button>` : '')];
+          (vo ? '' : ` <button class="btn btn-sm btn-primary" onclick="editSample(${s.id})">编辑</button>`) +
+          (vo ? '' : (s.status === '正常' ? ` <button class="btn btn-sm btn-danger" onclick="destroySample(${s.id})">销毁</button>` : ''))];
       });
       document.getElementById('sampTableBody').innerHTML = renderTable(headers, rows) + renderPaginationBar(state, 'goToSampPage', totalCount);
     };
@@ -1580,6 +1585,7 @@
     };
 
     window.destroySample = async function(id) {
+      if (isViewOnly()) return;
       if (!await showConfirm('确认销毁该留样？此操作不可撤销。', { title: '销毁留样', type: 'danger', danger: true })) return;
       const s = DB.samples.find(x => x.id === id);
       if (s) { s.status = '已销毁'; s.remark = '到期销毁'; DataStore.set('samples', DB.samples); }
@@ -1625,6 +1631,7 @@
     };
 
     window.saveSample = function() {
+      if (isViewOnly()) return;
       const name = document.getElementById('sName').value.trim();
       const canteenId = parseInt(document.getElementById('sCanteen').value);
       const mealType = document.getElementById('sMeal').value;
@@ -1659,22 +1666,23 @@
     // ===== 人员管理 =====
     function renderPersonnel(el) {
       setBreadcrumb(['首页', '人员信息管理']);
+      const vo = isViewOnly();
       let list = currentUser.canteenId ? DB.personnel.filter(p => p.canteenId === currentUser.canteenId) : DB.personnel;
       window.persPageState = window.persPageState || { currentPage: 1, pageSize: 10 };
       var state = window.persPageState;
       var totalCount = list.length;
       var paged = list.slice((state.currentPage - 1) * state.pageSize, state.currentPage * state.pageSize);
-      var headers = ['<input type="checkbox" id="persSelectAll" onchange="togglePersAll(this)" title="全选/取消全选">', '照片', '员工编号', '姓名', '所属食堂', '岗位', '联系电话', '健康证状态', '健康证到期日', '入职日期', '状态', '操作'];
+      var headers = [(vo ? '' : '<input type="checkbox" id="persSelectAll" onchange="togglePersAll(this)" title="全选/取消全选">'), '照片', '员工编号', '姓名', '所属食堂', '岗位', '联系电话', '健康证状态', '健康证到期日', '入职日期', '状态', '操作'];
       var rows = paged.map(function(p) {
         var canteen = DB.canteens.find(c => c.id === p.canteenId);
         var healthTag = p.healthStatus === '有效' ? '<span class="tag tag-green">有效</span>' : p.healthStatus === '即将过期' ? '<span class="tag tag-orange">即将过期</span>' : '<span class="tag tag-red">已过期</span>';
         var statusTag = p.status ? '<span class="tag tag-green">在职</span>' : '<span class="tag tag-gray">离职</span>';
         var photoHtml = p.facePhoto ? '<img class="face-thumb" src="' + p.facePhoto + '" alt="face">' : '<span class="face-placeholder">' + p.name.charAt(0) + '</span>';
         return [
-          '<input type="checkbox" class="pers-cb" data-id="' + p.id + '">',
+          (vo ? '' : '<input type="checkbox" class="pers-cb" data-id="' + p.id + '">'),
           photoHtml, p.empNo, p.name, canteen ? canteen.name : '-', p.position, p.phone, healthTag, p.healthExpire, p.entryDate, statusTag,
           '<button class="btn btn-sm btn-default" onclick="showPersonDetail(' + p.id + ')">详情</button>' +
-          (currentUser.role !== 'staff' ? ' <button class="btn btn-sm btn-primary" onclick="editPerson(' + p.id + ')">编辑</button> <button class="btn btn-sm btn-danger" onclick="deletePerson(' + p.id + ')">删除</button>' : '')
+          ((!isViewOnly() && currentUser.role !== 'staff') ? ' <button class="btn btn-sm btn-primary" onclick="editPerson(' + p.id + ')">编辑</button> <button class="btn btn-sm btn-danger" onclick="deletePerson(' + p.id + ')">删除</button>' : '')
         ];
       });
 
@@ -1683,9 +1691,9 @@
           <select id="persCanteenFilter" onchange="filterPersonList()"><option value="">全部食堂</option>${DB.canteens.filter(c => c.status).map(c => `<option value="${c.id}">${c.name}</option>`).join('')}</select>
           <select id="persHealthFilter" onchange="filterPersonList()"><option value="">全部健康证状态</option><option>有效</option><option>即将过期</option><option>已过期</option></select>
           <input type="text" id="persSearchInput" placeholder="搜索姓名/编号/电话" oninput="filterPersonList()">
-          ${currentUser.role !== 'staff' ? '<button class="btn btn-primary" onclick="openPersonModal()">+ 新增人员</button>' : ''}
-          ${currentUser.role !== 'staff' ? '<button class="btn btn-default" onclick="openBatchImport(\'person\')">批量导入</button>' : ''}
-          ${currentUser.role !== 'staff' ? '<button class="btn btn-danger" onclick="batchDeletePersons()">批量删除</button>' : ''}
+          ${(!isViewOnly() && currentUser.role !== 'staff') ? '<button class="btn btn-primary" onclick="openPersonModal()">+ 新增人员</button>' : ''}
+          ${(!isViewOnly() && currentUser.role !== 'staff') ? '<button class="btn btn-default" onclick="openBatchImport(\'person\')">批量导入</button>' : ''}
+          ${(!isViewOnly() && currentUser.role !== 'staff') ? '<button class="btn btn-danger" onclick="batchDeletePersons()">批量删除</button>' : ''}
         </div>
         <div class="card">
           <div class="card-body" id="persTableBody">
@@ -1703,6 +1711,7 @@
     window.filterPersonList = function() {
       window.persPageState = window.persPageState || { currentPage: 1, pageSize: 10 };
       window.persPageState.currentPage = 1;
+      const vo = isViewOnly();
       const canteenFilter = document.getElementById('persCanteenFilter').value;
       const healthFilter = document.getElementById('persHealthFilter').value;
       const keyword = (document.getElementById('persSearchInput').value || '').trim().toLowerCase();
@@ -1713,15 +1722,15 @@
       var state = window.persPageState;
       var totalCount = list.length;
       var paged = list.slice((state.currentPage - 1) * state.pageSize, state.currentPage * state.pageSize);
-      var headers = ['<input type="checkbox" id="persSelectAll" onchange="togglePersAll(this)" title="全选/取消全选">', '照片', '员工编号', '姓名', '所属食堂', '岗位', '联系电话', '健康证状态', '健康证到期日', '入职日期', '状态', '操作'];
+      var headers = [(vo ? '' : '<input type="checkbox" id="persSelectAll" onchange="togglePersAll(this)" title="全选/取消全选">'), '照片', '员工编号', '姓名', '所属食堂', '岗位', '联系电话', '健康证状态', '健康证到期日', '入职日期', '状态', '操作'];
       var rows = paged.map(function(p) {
         var canteen = DB.canteens.find(c => c.id === p.canteenId);
         var healthTag = p.healthStatus === '有效' ? '<span class="tag tag-green">有效</span>' : p.healthStatus === '即将过期' ? '<span class="tag tag-orange">即将过期</span>' : '<span class="tag tag-red">已过期</span>';
         var statusTag = p.status ? '<span class="tag tag-green">在职</span>' : '<span class="tag tag-gray">离职</span>';
         var photoHtml = p.facePhoto ? '<img class="face-thumb" src="' + p.facePhoto + '" alt="face">' : '<span class="face-placeholder">' + p.name.charAt(0) + '</span>';
-        return [photoHtml, p.empNo, p.name, canteen ? canteen.name : '-', p.position, p.phone, healthTag, p.healthExpire, p.entryDate, statusTag,
+        return [(vo ? '' : '<input type="checkbox" class="pers-cb" data-id="' + p.id + '">'), photoHtml, p.empNo, p.name, canteen ? canteen.name : '-', p.position, p.phone, healthTag, p.healthExpire, p.entryDate, statusTag,
           '<button class="btn btn-sm btn-default" onclick="showPersonDetail(' + p.id + ')">详情</button>' +
-          (currentUser.role !== 'staff' ? ' <button class="btn btn-sm btn-primary" onclick="editPerson(' + p.id + ')">编辑</button> <button class="btn btn-sm btn-danger" onclick="deletePerson(' + p.id + ')">删除</button>' : '')];
+          ((!isViewOnly() && currentUser.role !== 'staff') ? ' <button class="btn btn-sm btn-primary" onclick="editPerson(' + p.id + ')">编辑</button> <button class="btn btn-sm btn-danger" onclick="deletePerson(' + p.id + ')">删除</button>' : '')];
       });
       document.getElementById('persTableBody').innerHTML = renderTable(headers, rows) + renderPaginationBar(state, 'goToPersPage', totalCount);
     };
@@ -1783,6 +1792,7 @@
     };
 
     window.deletePerson = async function(id) {
+      if (isViewOnly()) return;
       if (!await showConfirm('确认删除该人员？此操作不可撤销。', { title: '删除人员', type: 'danger', danger: true })) return;
       const idx = DB.personnel.findIndex(p => p.id === id);
       if (idx > -1) { DB.personnel.splice(idx, 1); DataStore.set('personnel', DB.personnel); }
@@ -1794,6 +1804,7 @@
       document.querySelectorAll('.pers-cb').forEach(el => el.checked = cb.checked);
     };
     window.batchDeletePersons = async function() {
+      if (isViewOnly()) return;
       const checked = Array.from(document.querySelectorAll('.pers-cb:checked')).map(el => el.dataset.id);
       if (!checked.length) { showToast('请先勾选要删除的人员', 'warning'); return; }
       if (!await showConfirm('确认批量删除选中的 ' + checked.length + ' 名人员？此操作不可撤销。', { title: '批量删除', type: 'danger', danger: true })) return;
@@ -1883,6 +1894,7 @@
       `, '<button class="btn btn-default" onclick="closeModal()">取消</button> <button class="btn btn-primary" onclick="doBatchImport(\'' + kind + '\')">开始导入</button>');
     };
     window.doBatchImport = function(kind) {
+      if (isViewOnly()) return;
       const fileInput = document.getElementById('importFile');
       const msg = document.getElementById('importMsg');
       if (!fileInput || !fileInput.files || !fileInput.files.length) { showToast('请先选择 CSV 文件', 'warning'); return; }
@@ -1973,6 +1985,7 @@
     };
 
     window.savePerson = function() {
+      if (isViewOnly()) return;
       const empNo = document.getElementById('pEmpNo').value.trim();
       const name = document.getElementById('pName').value.trim();
       const canteenId = parseInt(document.getElementById('pCanteen').value);
@@ -2022,6 +2035,7 @@
     // ===== 晨午晚检 =====
     function renderChecks(el) {
       setBreadcrumb(['首页', '晨午晚检查管理']);
+      const vo = isViewOnly();
       let list = currentUser.canteenId ? DB.checks.filter(c => c.canteenId === currentUser.canteenId) : DB.checks;
       window.checkPageState = window.checkPageState || { currentPage: 1, pageSize: 10 };
       var state = window.checkPageState;
@@ -2044,7 +2058,7 @@
           <select id="checkHealthFilter" onchange="filterCheckList()"><option value="">全部健康状态</option><option>正常</option><option>异常</option></select>
           <input type="date" id="checkDateFilter" onchange="filterCheckList()">
           <input type="text" id="checkSearchInput" placeholder="搜索姓名" oninput="filterCheckList()">
-          <button class="btn btn-primary" onclick="openCheckModal()">+ 手动录入</button>
+          ${vo ? '' : '<button class="btn btn-primary" onclick="openCheckModal()">+ 手动录入</button>'}
         </div>
         <div class="card">
           <div class="card-body" id="checkTableBody">
@@ -2114,6 +2128,7 @@
     };
 
     window.saveCheck = function() {
+      if (isViewOnly()) return;
       const personId = parseInt(document.getElementById('chPerson').value);
       const canteenId = parseInt(document.getElementById('chCanteen').value);
       const type = document.getElementById('chType').value;
@@ -2340,6 +2355,7 @@
     // ===== 台账填报 =====
     function renderLedger(el) {
       setBreadcrumb(['首页', '台账填报']);
+      const vo = isViewOnly();
       let list = currentUser.canteenId ? DB.ledgers.filter(x => x.canteenId === currentUser.canteenId) : DB.ledgers;
       window.ledgerPageState = window.ledgerPageState || { currentPage: 1, pageSize: 10 };
       var state = window.ledgerPageState;
@@ -2350,15 +2366,15 @@
         const statusTag = l.status === '已提交' ? '<span class="tag tag-green">已提交</span>' : '<span class="tag tag-orange">待提交</span>';
         return [l.id, l.date, l.type, l.item, l.quantity, l.unit, l.operator, statusTag,
           `<button class="btn btn-sm btn-default" onclick="showLedgerDetail(${l.id})">详情</button>` +
-          ` <button class="btn btn-sm btn-primary" onclick="editLedger(${l.id})">编辑</button>` +
-          ` <button class="btn btn-sm btn-danger" onclick="deleteLedger(${l.id})">删除</button>`];
+          (vo ? '' : ` <button class="btn btn-sm btn-primary" onclick="editLedger(${l.id})">编辑</button>`) +
+          (vo ? '' : ` <button class="btn btn-sm btn-danger" onclick="deleteLedger(${l.id})">删除</button>`)];
       });
       el.innerHTML = `
         <div class="filter-bar">
           <select id="ledgerTypeFilter" onchange="filterLedgerList()"><option value="">全部类型</option><option>采购验收台账</option><option>餐具消毒台账</option><option>餐厨废弃物台账</option><option>添加剂使用台账</option></select>
           <select id="ledgerStatusFilter" onchange="filterLedgerList()"><option value="">全部状态</option><option>已提交</option><option>待提交</option></select>
           <input type="text" id="ledgerSearchInput" placeholder="搜索品名/项目" oninput="filterLedgerList()">
-          <button class="btn btn-primary" onclick="openLedgerModal()">+ 新增台账</button>
+          ${vo ? '' : '<button class="btn btn-primary" onclick="openLedgerModal()">+ 新增台账</button>'}
         </div>
         <div class="card"><div class="card-body" id="ledgerTableBody">
           ${renderTable(headers, rows)}
@@ -2369,6 +2385,7 @@
     window.filterLedgerList = function() {
       window.ledgerPageState = window.ledgerPageState || { currentPage: 1, pageSize: 10 };
       window.ledgerPageState.currentPage = 1;
+      const vo = isViewOnly();
       const typeFilter = document.getElementById('ledgerTypeFilter').value;
       const statusFilter = document.getElementById('ledgerStatusFilter').value;
       const keyword = (document.getElementById('ledgerSearchInput').value || '').trim().toLowerCase();
@@ -2383,8 +2400,8 @@
         const statusTag = l.status === '已提交' ? '<span class="tag tag-green">已提交</span>' : '<span class="tag tag-orange">待提交</span>';
         return [l.id, l.date, l.type, l.item, l.quantity, l.unit, l.operator, statusTag,
           `<button class="btn btn-sm btn-default" onclick="showLedgerDetail(${l.id})">详情</button>` +
-          ` <button class="btn btn-sm btn-primary" onclick="editLedger(${l.id})">编辑</button>` +
-          ` <button class="btn btn-sm btn-danger" onclick="deleteLedger(${l.id})">删除</button>`];
+          (vo ? '' : ` <button class="btn btn-sm btn-primary" onclick="editLedger(${l.id})">编辑</button>`) +
+          (vo ? '' : ` <button class="btn btn-sm btn-danger" onclick="deleteLedger(${l.id})">删除</button>`)];
       });
       document.getElementById('ledgerTableBody').innerHTML = renderTable(headers, rows) + renderPaginationBar(state, 'goToLedgerPage', totalCount);
     };
@@ -2448,6 +2465,7 @@
         </div>`, '<button class="btn btn-default" onclick="closeModal()">关闭</button>');
     };
     window.deleteLedger = function(id) {
+      if (isViewOnly()) return;
       showConfirm('确认删除该台账记录？此操作不可撤销。', {
         onConfirm: () => {
           const idx = DB.ledgers.findIndex(x => x.id === id);
@@ -2457,6 +2475,7 @@
       });
     };
     window.saveLedger = function() {
+      if (isViewOnly()) return;
       const date = document.getElementById('lDate').value;
       const type = document.getElementById('lType').value;
       const item = document.getElementById('lItem').value.trim();
@@ -2484,6 +2503,7 @@
     // ===== 巡检记录 =====
     function renderPatrol(el) {
       setBreadcrumb(['首页', '巡检记录']);
+      const vo = isViewOnly();
       let list = currentUser.canteenId ? DB.patrols.filter(x => x.canteenId === currentUser.canteenId) : DB.patrols;
       window.patrolPageState = window.patrolPageState || { currentPage: 1, pageSize: 10 };
       var state = window.patrolPageState;
@@ -2495,15 +2515,15 @@
         const statusTag = p.status === '已完成' ? '<span class="tag tag-green">已完成</span>' : p.status === '已驳回' ? '<span class="tag tag-red">已驳回</span>' : '<span class="tag tag-orange">待复核</span>';
         return [p.id, p.date, p.area, p.inspector, p.item, resultTag, p.problem || '-', statusTag,
           `<button class="btn btn-sm btn-default" onclick="showPatrolDetail(${p.id})">详情</button>` +
-          ` <button class="btn btn-sm btn-primary" onclick="editPatrol(${p.id})">编辑</button>` +
-          ` <button class="btn btn-sm btn-danger" onclick="deletePatrol(${p.id})">删除</button>`];
+          (vo ? '' : ` <button class="btn btn-sm btn-primary" onclick="editPatrol(${p.id})">编辑</button>`) +
+          (vo ? '' : ` <button class="btn btn-sm btn-danger" onclick="deletePatrol(${p.id})">删除</button>`)];
       });
       el.innerHTML = `
         <div class="filter-bar">
           <select id="patrolResultFilter" onchange="filterPatrolList()"><option value="">全部结果</option><option>正常</option><option>异常</option></select>
           <select id="patrolStatusFilter" onchange="filterPatrolList()"><option value="">全部状态</option><option>已完成</option><option>待复核</option><option>已驳回</option></select>
           <input type="text" id="patrolSearchInput" placeholder="搜索区域/内容" oninput="filterPatrolList()">
-          <button class="btn btn-primary" onclick="openPatrolModal()">+ 新增巡检</button>
+          ${vo ? '' : '<button class="btn btn-primary" onclick="openPatrolModal()">+ 新增巡检</button>'}
         </div>
         <div class="card"><div class="card-body" id="patrolTableBody">
           ${renderTable(headers, rows)}
@@ -2514,6 +2534,7 @@
     window.filterPatrolList = function() {
       window.patrolPageState = window.patrolPageState || { currentPage: 1, pageSize: 10 };
       window.patrolPageState.currentPage = 1;
+      const vo = isViewOnly();
       const resultFilter = document.getElementById('patrolResultFilter').value;
       const statusFilter = document.getElementById('patrolStatusFilter').value;
       const keyword = (document.getElementById('patrolSearchInput').value || '').trim().toLowerCase();
@@ -2529,8 +2550,8 @@
         const statusTag = p.status === '已完成' ? '<span class="tag tag-green">已完成</span>' : p.status === '已驳回' ? '<span class="tag tag-red">已驳回</span>' : '<span class="tag tag-orange">待复核</span>';
         return [p.id, p.date, p.area, p.inspector, p.item, resultTag, p.problem || '-', statusTag,
           `<button class="btn btn-sm btn-default" onclick="showPatrolDetail(${p.id})">详情</button>` +
-          ` <button class="btn btn-sm btn-primary" onclick="editPatrol(${p.id})">编辑</button>` +
-          ` <button class="btn btn-sm btn-danger" onclick="deletePatrol(${p.id})">删除</button>`];
+          (vo ? '' : ` <button class="btn btn-sm btn-primary" onclick="editPatrol(${p.id})">编辑</button>`) +
+          (vo ? '' : ` <button class="btn btn-sm btn-danger" onclick="deletePatrol(${p.id})">删除</button>`)];
       });
       document.getElementById('patrolTableBody').innerHTML = renderTable(headers, rows) + renderPaginationBar(state, 'goToPatrolPage', totalCount);
     };
@@ -2593,6 +2614,7 @@
         </div>`, '<button class="btn btn-default" onclick="closeModal()">关闭</button>');
     };
     window.deletePatrol = function(id) {
+      if (isViewOnly()) return;
       showConfirm('确认删除该巡检记录？此操作不可撤销。', {
         onConfirm: () => {
           const idx = DB.patrols.findIndex(x => x.id === id);
@@ -2602,6 +2624,7 @@
       });
     };
     window.savePatrol = function() {
+      if (isViewOnly()) return;
       const date = document.getElementById('pDate').value;
       const area = document.getElementById('pArea').value.trim();
       const inspector = document.getElementById('pInspector').value.trim();
@@ -2691,6 +2714,7 @@
     // ===== 食安巡查 =====
     function renderSafetyInspect(el) {
       setBreadcrumb(['首页', '食安巡查']);
+      const vo = isViewOnly();
       let list = currentUser.canteenId ? DB.safetyInspects.filter(x => x.canteenId === currentUser.canteenId) : DB.safetyInspects;
       window.safetyPageState = window.safetyPageState || { currentPage: 1, pageSize: 10 };
       var state = window.safetyPageState;
@@ -2702,15 +2726,15 @@
         const statusTag = s.status === '已整改' ? '<span class="tag tag-green">已整改</span>' : s.status === '已复核' ? '<span class="tag tag-blue">已复核</span>' : '<span class="tag tag-red">待整改</span>';
         return [s.id, s.date, s.time, s.category, s.finding, levelTag, s.handler, statusTag,
           `<button class="btn btn-sm btn-default" onclick="showSafetyDetail(${s.id})">详情</button>` +
-          ` <button class="btn btn-sm btn-primary" onclick="editSafety(${s.id})">编辑</button>` +
-          ` <button class="btn btn-sm btn-danger" onclick="deleteSafety(${s.id})">删除</button>`];
+          (vo ? '' : ` <button class="btn btn-sm btn-primary" onclick="editSafety(${s.id})">编辑</button>`) +
+          (vo ? '' : ` <button class="btn btn-sm btn-danger" onclick="deleteSafety(${s.id})">删除</button>`)];
       });
       el.innerHTML = `
         <div class="filter-bar">
           <select id="safetyCategoryFilter" onchange="filterSafetyList()"><option value="">全部类别</option><option>环境卫生</option><option>加工操作</option><option>人员卫生</option><option>设施设备</option></select>
           <select id="safetyStatusFilter" onchange="filterSafetyList()"><option value="">全部状态</option><option>待整改</option><option>已整改</option><option>已复核</option></select>
           <input type="text" id="safetySearchInput" placeholder="搜索问题/整改人" oninput="filterSafetyList()">
-          <button class="btn btn-primary" onclick="openSafetyModal()">+ 新增巡查</button>
+          ${vo ? '' : '<button class="btn btn-primary" onclick="openSafetyModal()">+ 新增巡查</button>'}
         </div>
         <div class="card"><div class="card-body" id="safetyTableBody">
           ${renderTable(headers, rows)}
@@ -2721,6 +2745,7 @@
     window.filterSafetyList = function() {
       window.safetyPageState = window.safetyPageState || { currentPage: 1, pageSize: 10 };
       window.safetyPageState.currentPage = 1;
+      const vo = isViewOnly();
       const categoryFilter = document.getElementById('safetyCategoryFilter').value;
       const statusFilter = document.getElementById('safetyStatusFilter').value;
       const keyword = (document.getElementById('safetySearchInput').value || '').trim().toLowerCase();
@@ -2736,8 +2761,8 @@
         const statusTag = s.status === '已整改' ? '<span class="tag tag-green">已整改</span>' : s.status === '已复核' ? '<span class="tag tag-blue">已复核</span>' : '<span class="tag tag-red">待整改</span>';
         return [s.id, s.date, s.time, s.category, s.finding, levelTag, s.handler, statusTag,
           `<button class="btn btn-sm btn-default" onclick="showSafetyDetail(${s.id})">详情</button>` +
-          ` <button class="btn btn-sm btn-primary" onclick="editSafety(${s.id})">编辑</button>` +
-          ` <button class="btn btn-sm btn-danger" onclick="deleteSafety(${s.id})">删除</button>`];
+          (vo ? '' : ` <button class="btn btn-sm btn-primary" onclick="editSafety(${s.id})">编辑</button>`) +
+          (vo ? '' : ` <button class="btn btn-sm btn-danger" onclick="deleteSafety(${s.id})">删除</button>`)];
       });
       document.getElementById('safetyTableBody').innerHTML = renderTable(headers, rows) + renderPaginationBar(state, 'goToSafetyPage', totalCount);
     };
@@ -2799,6 +2824,7 @@
         </div>`, '<button class="btn btn-default" onclick="closeModal()">关闭</button>');
     };
     window.deleteSafety = function(id) {
+      if (isViewOnly()) return;
       showConfirm('确认删除该巡查记录？此操作不可撤销。', {
         onConfirm: () => {
           const idx = DB.safetyInspects.findIndex(x => x.id === id);
@@ -2808,6 +2834,7 @@
       });
     };
     window.saveSafety = function() {
+      if (isViewOnly()) return;
       const date = document.getElementById('sDate').value;
       const time = document.getElementById('sTime').value;
       const category = document.getElementById('sCategory').value;
@@ -2833,6 +2860,7 @@
     // ===== 菜谱维护 =====
     function renderRecipes(el) {
       setBreadcrumb(['首页', '菜谱信息维护']);
+      const vo = isViewOnly();
       let list = currentUser.canteenId ? DB.recipes.filter(x => x.canteenId === currentUser.canteenId) : DB.recipes;
       window.recipePageState = window.recipePageState || { currentPage: 1, pageSize: 10 };
       var state = window.recipePageState;
@@ -2843,15 +2871,15 @@
         const statusTag = r.status === '启用' ? '<span class="tag tag-green">启用</span>' : '<span class="tag tag-gray">停用</span>';
         return [r.id, r.mealType, r.date, r.dishName, r.category, '¥' + r.price, statusTag,
           `<button class="btn btn-sm btn-default" onclick="showRecipeDetail(${r.id})">详情</button>` +
-          ` <button class="btn btn-sm btn-primary" onclick="editRecipe(${r.id})">编辑</button>` +
-          ` <button class="btn btn-sm btn-danger" onclick="deleteRecipe(${r.id})">删除</button>`];
+          (vo ? '' : ` <button class="btn btn-sm btn-primary" onclick="editRecipe(${r.id})">编辑</button>`) +
+          (vo ? '' : ` <button class="btn btn-sm btn-danger" onclick="deleteRecipe(${r.id})">删除</button>`)];
       });
       el.innerHTML = `
         <div class="filter-bar">
           <select id="recipeMealFilter" onchange="filterRecipeList()"><option value="">全部餐次</option><option>早餐</option><option>午餐</option><option>晚餐</option></select>
           <select id="recipeCategoryFilter" onchange="filterRecipeList()"><option value="">全部类别</option><option>荤菜</option><option>素菜</option><option>汤品</option><option>主食</option></select>
           <input type="text" id="recipeSearchInput" placeholder="搜索菜品名称" oninput="filterRecipeList()">
-          <button class="btn btn-primary" onclick="openRecipeModal()">+ 新增菜品</button>
+          ${vo ? '' : '<button class="btn btn-primary" onclick="openRecipeModal()">+ 新增菜品</button>'}
         </div>
         <div class="card"><div class="card-body" id="recipeTableBody">
           ${renderTable(headers, rows)}
@@ -2862,6 +2890,7 @@
     window.filterRecipeList = function() {
       window.recipePageState = window.recipePageState || { currentPage: 1, pageSize: 10 };
       window.recipePageState.currentPage = 1;
+      const vo = isViewOnly();
       const mealFilter = document.getElementById('recipeMealFilter').value;
       const categoryFilter = document.getElementById('recipeCategoryFilter').value;
       const keyword = (document.getElementById('recipeSearchInput').value || '').trim().toLowerCase();
@@ -2876,8 +2905,8 @@
         const statusTag = r.status === '启用' ? '<span class="tag tag-green">启用</span>' : '<span class="tag tag-gray">停用</span>';
         return [r.id, r.mealType, r.date, r.dishName, r.category, '¥' + r.price, statusTag,
           `<button class="btn btn-sm btn-default" onclick="showRecipeDetail(${r.id})">详情</button>` +
-          ` <button class="btn btn-sm btn-primary" onclick="editRecipe(${r.id})">编辑</button>` +
-          ` <button class="btn btn-sm btn-danger" onclick="deleteRecipe(${r.id})">删除</button>`];
+          (vo ? '' : ` <button class="btn btn-sm btn-primary" onclick="editRecipe(${r.id})">编辑</button>`) +
+          (vo ? '' : ` <button class="btn btn-sm btn-danger" onclick="deleteRecipe(${r.id})">删除</button>`)];
       });
       document.getElementById('recipeTableBody').innerHTML = renderTable(headers, rows) + renderPaginationBar(state, 'goToRecipePage', totalCount);
     };
@@ -2932,6 +2961,7 @@
         </div>`, '<button class="btn btn-default" onclick="closeModal()">关闭</button>');
     };
     window.deleteRecipe = function(id) {
+      if (isViewOnly()) return;
       showConfirm('确认删除该菜品？此操作不可撤销。', {
         onConfirm: () => {
           const idx = DB.recipes.findIndex(x => x.id === id);
@@ -2941,6 +2971,7 @@
       });
     };
     window.saveRecipe = function() {
+      if (isViewOnly()) return;
       const mealType = document.getElementById('rMeal').value;
       const date = document.getElementById('rDate').value.trim();
       const dishName = document.getElementById('rDish').value.trim();
