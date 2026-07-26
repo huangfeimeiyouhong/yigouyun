@@ -2837,7 +2837,7 @@
       var state = window.recipePageState;
       var totalCount = list.length;
       var paged = list.slice((state.currentPage - 1) * state.pageSize, state.currentPage * state.pageSize);
-      const headers = ['ID', '餐次', '星期', '菜品名称', '类别', '价格', '状态', '操作'];
+      const headers = ['ID', '餐次', '日期', '菜品名称', '类别', '价格', '状态', '操作'];
       const rows = paged.map(r => {
         const statusTag = r.status === '启用' ? '<span class="tag tag-green">启用</span>' : '<span class="tag tag-gray">停用</span>';
         return [r.id, r.mealType, r.date, r.dishName, r.category, '¥' + r.price, statusTag,
@@ -2870,7 +2870,7 @@
       if (keyword) list = list.filter(x => x.dishName.toLowerCase().includes(keyword));
       var state = window.recipePageState, totalCount = list.length;
       var paged = list.slice((state.currentPage - 1) * state.pageSize, state.currentPage * state.pageSize);
-      const headers = ['ID', '餐次', '星期', '菜品名称', '类别', '价格', '状态', '操作'];
+      const headers = ['ID', '餐次', '日期', '菜品名称', '类别', '价格', '状态', '操作'];
       const rows = paged.map(r => {
         const statusTag = r.status === '启用' ? '<span class="tag tag-green">启用</span>' : '<span class="tag tag-gray">停用</span>';
         return [r.id, r.mealType, r.date, r.dishName, r.category, '¥' + r.price, statusTag,
@@ -2886,7 +2886,7 @@
       openModal('新增菜品', `
         <div class="form-row">
           <div class="form-col"><label class="form-label">餐次<span class="required">*</span></label><select class="form-select" id="rMeal"><option>早餐</option><option>午餐</option><option>晚餐</option></select></div>
-          <div class="form-col"><label class="form-label">星期<span class="required">*</span></label><input class="form-input" id="rDate" value="周一"></div>
+          <div class="form-col"><label class="form-label">日期<span class="required">*</span></label><input class="form-input" id="rDate" type="date" value="${new Date().toISOString().slice(0,10)}"></div>
         </div>
         <div class="form-row">
           <div class="form-col"><label class="form-label">菜品名称<span class="required">*</span></label><input class="form-input" id="rDish" placeholder="如：红烧肉"></div>
@@ -2904,7 +2904,7 @@
       openModal('编辑菜品', `
         <div class="form-row">
           <div class="form-col"><label class="form-label">餐次<span class="required">*</span></label><select class="form-select" id="rMeal"><option ${r.mealType === '早餐' ? 'selected' : ''}>早餐</option><option ${r.mealType === '午餐' ? 'selected' : ''}>午餐</option><option ${r.mealType === '晚餐' ? 'selected' : ''}>晚餐</option></select></div>
-          <div class="form-col"><label class="form-label">星期<span class="required">*</span></label><input class="form-input" id="rDate" value="${r.date}"></div>
+          <div class="form-col"><label class="form-label">日期<span class="required">*</span></label><input class="form-input" id="rDate" type="date" value="${r.date}"></div>
         </div>
         <div class="form-row">
           <div class="form-col"><label class="form-label">菜品名称<span class="required">*</span></label><input class="form-input" id="rDish" value="${r.dishName}"></div>
@@ -2923,7 +2923,7 @@
         <div class="detail-list">
           <div class="detail-item"><div class="label">所属食堂</div><div class="value">${canteen ? canteen.name : '-'}</div></div>
           <div class="detail-item"><div class="label">餐次</div><div class="value">${r.mealType}</div></div>
-          <div class="detail-item"><div class="label">星期</div><div class="value">${r.date}</div></div>
+          <div class="detail-item"><div class="label">日期</div><div class="value">${r.date}</div></div>
           <div class="detail-item"><div class="label">菜品名称</div><div class="value">${r.dishName}</div></div>
           <div class="detail-item"><div class="label">类别</div><div class="value">${r.category}</div></div>
           <div class="detail-item"><div class="label">价格</div><div class="value">¥${r.price}</div></div>

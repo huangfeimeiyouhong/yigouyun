@@ -188,14 +188,14 @@ const MOCK_DATA = {
 
   // 菜谱信息维护
   recipes: [
-    { id: 1, canteenId: 1, mealType: '早餐', date: '周一', dishName: '皮蛋瘦肉粥', category: '主食', price: '3.0', status: '启用' },
-    { id: 2, canteenId: 1, mealType: '午餐', date: '周一', dishName: '红烧肉', category: '荤菜', price: '10.0', status: '启用' },
-    { id: 3, canteenId: 1, mealType: '午餐', date: '周一', dishName: '清炒时蔬', category: '素菜', price: '4.0', status: '启用' },
-    { id: 4, canteenId: 1, mealType: '午餐', date: '周一', dishName: '紫菜蛋花汤', category: '汤品', price: '2.0', status: '启用' },
-    { id: 5, canteenId: 1, mealType: '晚餐', date: '周一', dishName: '宫保鸡丁', category: '荤菜', price: '9.0', status: '启用' },
-    { id: 6, canteenId: 2, mealType: '午餐', date: '周一', dishName: '糖醋里脊', category: '荤菜', price: '10.0', status: '启用' },
-    { id: 7, canteenId: 2, mealType: '午餐', date: '周一', dishName: '番茄炒蛋', category: '荤菜', price: '6.0', status: '启用' },
-    { id: 8, canteenId: 2, mealType: '晚餐', date: '周一', dishName: '凉拌黄瓜', category: '素菜', price: '3.0', status: '停用' }
+    { id: 1, canteenId: 1, mealType: '早餐', date: '2026-07-28', dishName: '皮蛋瘦肉粥', category: '主食', price: '3.0', status: '启用' },
+    { id: 2, canteenId: 1, mealType: '午餐', date: '2026-07-28', dishName: '红烧肉', category: '荤菜', price: '10.0', status: '启用' },
+    { id: 3, canteenId: 1, mealType: '午餐', date: '2026-07-28', dishName: '清炒时蔬', category: '素菜', price: '4.0', status: '启用' },
+    { id: 4, canteenId: 1, mealType: '午餐', date: '2026-07-28', dishName: '紫菜蛋花汤', category: '汤品', price: '2.0', status: '启用' },
+    { id: 5, canteenId: 1, mealType: '晚餐', date: '2026-07-28', dishName: '宫保鸡丁', category: '荤菜', price: '9.0', status: '启用' },
+    { id: 6, canteenId: 2, mealType: '午餐', date: '2026-07-28', dishName: '糖醋里脊', category: '荤菜', price: '10.0', status: '启用' },
+    { id: 7, canteenId: 2, mealType: '午餐', date: '2026-07-28', dishName: '番茄炒蛋', category: '荤菜', price: '6.0', status: '启用' },
+    { id: 8, canteenId: 2, mealType: '晚餐', date: '2026-07-27', dishName: '凉拌黄瓜', category: '素菜', price: '3.0', status: '停用' }
   ]
 };
 
@@ -240,10 +240,11 @@ const DataStore = {
       this.set('sysParams', MOCK_DATA.sysParams);
     }
     // 数据版本迁移：确保预警数据包含待审核记录，角色数据包含权限
-    const DATA_VERSION = '2026-07-26-v3';
+    const DATA_VERSION = '2026-07-26-v4';
     if (this.get('dataVersion') !== DATA_VERSION) {
       this.set('alerts', MOCK_DATA.alerts);
       this.set('roles', MOCK_DATA.roles);
+      this.set('recipes', MOCK_DATA.recipes);
       this.set('dataVersion', DATA_VERSION);
     }
   },
