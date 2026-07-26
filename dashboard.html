@@ -762,6 +762,10 @@
     var _hashPage = parseHashPage();
     var _menus0 = (roleConfig[currentUser.role] && roleConfig[currentUser.role].menus) || [];
     let currentPage = (_hashPage && _menus0.some(m => m.key === _hashPage)) ? _hashPage : firstMenuKey();
+    // 进入时若停在默认首页却带了 #dashboard，清掉让 URL 保持干净（replaceState 不触发 hashchange）
+    if (currentPage === firstMenuKey() && window.location.hash) {
+      history.replaceState(null, '', window.location.pathname + window.location.search);
+    }
 
     // ===================== 导航渲染 =====================
     function renderNav() {
@@ -777,13 +781,25 @@
       document.getElementById('userAvatar').textContent = currentUser.realName.charAt(0);
     }
 
+    // 默认首页（第一个菜单）不显示 hash，进入/切回时 URL 保持干净的 /dashboard
+    function isDefaultPage(page) { return page === firstMenuKey(); }
+    function clearHashSilently() {
+      if (window.location.hash) {
+        history.replaceState(null, '', window.location.pathname + window.location.search);
+      }
+    }
+    function setHash(page) {
+      if (isDefaultPage(page)) clearHashSilently();
+      else window.location.hash = page;
+    }
+
     function navigate(page) {
       var menus = (roleConfig[currentUser.role] && roleConfig[currentUser.role].menus) || [];
       if (!menus.some(m => m.key === page)) return; // 越权访问忽略
-      if (window.location.hash.replace(/^#/, '') === page) {
+      if (parseHashPage() === page) {
         currentPage = page; renderNav(); renderContent();
       } else {
-        window.location.hash = page; // 改变 hash，由 hashchange 统一渲染
+        setHash(page); // 默认首页清 hash，其它模块写 hash，由 hashchange 统一渲染
       }
     }
 
@@ -791,10 +807,12 @@
     window.addEventListener('hashchange', function() {
       var page = parseHashPage();
       var menus = (roleConfig[currentUser.role] && roleConfig[currentUser.role].menus) || [];
-      if (page && menus.some(m => m.key === page)) {
+      if (!page) { // 空 hash = 默认首页
+        currentPage = firstMenuKey(); renderNav(); renderContent();
+      } else if (menus.some(m => m.key === page)) {
         currentPage = page; renderNav(); renderContent();
       } else {
-        window.location.hash = currentPage; // 无效 hash 回落当前页
+        currentPage = firstMenuKey(); renderNav(); renderContent(); clearHashSilently();
       }
     });
 
