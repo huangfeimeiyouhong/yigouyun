@@ -703,39 +703,43 @@
     const currentUser = DataStore.get('currentUser');
     if (!currentUser) { window.location.href = 'index.html'; }
 
-    const roleConfig = {
-      admin: { name: '平台管理员', menus: [
-        { key: 'dashboard', label: '工作台', icon: '&#128202;' },
-        { key: 'devices', label: '物联设备', icon: '&#128268;' },
-        { key: 'alerts', label: '异常预警', icon: '&#128680;' },
-        { key: 'alertReview', label: '预警审核', icon: '&#9989;' },
-        { key: 'samples', label: '留样管理', icon: '&#129379;' },
-        { key: 'personnel', label: '人员管理', icon: '&#128100;' },
-        { key: 'checks', label: '晨午晚检', icon: '&#129658;' },
-        { key: 'access', label: '门禁管理', icon: '&#128275;' },
-        { key: 'monitor', label: '视频监控', icon: '&#127909;' },
-        { key: 'roles', label: '角色管理', icon: '&#128101;' },
-        { key: 'system', label: '系统管理', icon: '&#9881;' },
-      ]},
-      canteenAdmin: { name: '食堂管理员', menus: [
-        { key: 'dashboard', label: '工作台', icon: '&#128202;' },
-        { key: 'users', label: '各食堂用户管理', icon: '&#128100;' },
-        { key: 'roles', label: '角色管理', icon: '&#128101;' },
-        { key: 'alertReview', label: '预警信息审核', icon: '&#9989;' },
-        { key: 'patrolReview', label: '巡查记录审核', icon: '&#128269;' },
-      ]},
-      staff: { name: '从业人员', menus: [
-        { key: 'samples', label: '留样管理', icon: '&#129379;' },
-        { key: 'ledger', label: '台账填报', icon: '&#128221;' },
-        { key: 'patrol', label: '巡检', icon: '&#128269;' },
-        { key: 'safetyInspect', label: '食安巡查', icon: '&#128737;' },
-        { key: 'recipes', label: '菜谱信息维护', icon: '&#127869;' },
-      ]},
-      inspector: { name: '监管用户', menus: [
-        { key: 'dataView', label: '查看食安数据', icon: '&#128200;' },
-        { key: 'monitor', label: '视频监控', icon: '&#127909;' },
-      ]}
-    };
+    // 全部可用菜单（权限项）
+    const ALL_MENUS = [
+      { key: 'dashboard', label: '工作台', icon: '&#128202;', group: '总览' },
+      { key: 'devices', label: '物联设备', icon: '&#128268;', group: '设备' },
+      { key: 'alerts', label: '异常预警', icon: '&#128680;', group: '预警' },
+      { key: 'alertReview', label: '预警审核', icon: '&#9989;', group: '预警' },
+      { key: 'samples', label: '留样管理', icon: '&#129379;', group: '业务' },
+      { key: 'personnel', label: '人员管理', icon: '&#128100;', group: '业务' },
+      { key: 'checks', label: '晨午晚检', icon: '&#129658;', group: '业务' },
+      { key: 'access', label: '门禁管理', icon: '&#128275;', group: '业务' },
+      { key: 'monitor', label: '视频监控', icon: '&#127909;', group: '监控' },
+      { key: 'ledger', label: '台账填报', icon: '&#128221;', group: '业务' },
+      { key: 'patrol', label: '巡检记录', icon: '&#128269;', group: '业务' },
+      { key: 'safetyInspect', label: '食安巡查', icon: '&#128737;', group: '业务' },
+      { key: 'recipes', label: '菜谱信息维护', icon: '&#127869;', group: '业务' },
+      { key: 'dataView', label: '查看食安数据', icon: '&#128200;', group: '监管' },
+      { key: 'users', label: '各食堂用户管理', icon: '&#128100;', group: '管理' },
+      { key: 'roles', label: '角色管理', icon: '&#128101;', group: '管理' },
+      { key: 'system', label: '系统管理', icon: '&#9881;', group: '管理' },
+      { key: 'patrolReview', label: '巡查记录审核', icon: '&#128269;', group: '审核' },
+    ];
+
+    // 根据 DB.roles 中的 permissions 动态构建角色菜单配置
+    function buildRoleConfig() {
+      var cfg = {};
+      DB.roles.forEach(function(r) {
+        var perms = r.permissions || [];
+        cfg[r.code] = { name: r.name, menus: ALL_MENUS.filter(function(m) { return perms.indexOf(m.key) !== -1; }) };
+      });
+      // 兜底：如果某角色 code 没有匹配到，给一个默认空菜单
+      if (!cfg.admin) cfg.admin = { name: '平台管理员', menus: [] };
+      if (!cfg.canteenAdmin) cfg.canteenAdmin = { name: '食堂管理员', menus: [] };
+      if (!cfg.staff) cfg.staff = { name: '从业人员', menus: [] };
+      if (!cfg.inspector) cfg.inspector = { name: '监管用户', menus: [] };
+      return cfg;
+    }
+    var roleConfig = buildRoleConfig();
 
     let currentPage = (roleConfig[currentUser.role] && roleConfig[currentUser.role].menus[0]) ? roleConfig[currentUser.role].menus[0].key : 'dashboard';
 
@@ -3268,11 +3272,14 @@
       var list = DB.roles;
       var totalCount = list.length;
       var paged = list.slice((state.currentPage - 1) * state.pageSize, state.currentPage * state.pageSize);
-      const headers = ['编号', '角色名称', '角色标识', '描述', '关联用户数', '状态', '操作'];
+      const headers = ['编号', '角色名称', '角色标识', '描述', '权限数', '关联用户数', '状态', '操作'];
       const rows = paged.map(r => {
         const statusTag = r.status ? '<span class="tag tag-green">启用</span>' : '<span class="tag tag-gray">停用</span>';
+        var permCount = (r.permissions || []).length;
         return [
-          r.id, r.name, r.code, r.description, r.userCount || 0, statusTag,
+          r.id, r.name, r.code, r.description,
+          '<span style="color:#1a4a7a;font-weight:600">' + permCount + ' 项</span>',
+          r.userCount || 0, statusTag,
           `<button class="btn btn-sm btn-default" onclick="showRoleDetail(${r.id})">详情</button>` +
           ` <button class="btn btn-sm btn-primary" onclick="editRole(${r.id})">编辑</button>` +
           ` <button class="btn btn-sm btn-danger" onclick="deleteRole(${r.id})">删除</button>`
@@ -3298,6 +3305,13 @@
     window.showRoleDetail = function(id) {
       const r = DB.roles.find(x => x.id === id);
       if (!r) return;
+      var perms = r.permissions || [];
+      var permTags = perms.length > 0
+        ? perms.map(function(k) {
+            var m = ALL_MENUS.find(x => x.key === k);
+            return m ? '<span class="tag tag-blue" style="margin:2px 4px">' + m.icon + ' ' + m.label + '</span>' : '';
+          }).join('')
+        : '<span style="color:#999">未配置</span>';
       openModal('角色详情', `
         <div class="detail-list">
           <div class="detail-item"><div class="label">角色ID</div><div class="value">${r.id}</div></div>
@@ -3307,8 +3321,39 @@
           <div class="detail-item"><div class="label">创建时间</div><div class="value">${r.createTime}</div></div>
           <div class="detail-item"><div class="label">状态</div><div class="value">${r.status ? '启用' : '停用'}</div></div>
           <div class="detail-item" style="grid-column:span 2"><div class="label">描述</div><div class="value">${r.description}</div></div>
+          <div class="detail-item" style="grid-column:span 2"><div class="label">功能权限（${perms.length} 项）</div><div class="value" style="line-height:2">${permTags}</div></div>
         </div>
       `, '<button class="btn btn-default" onclick="closeModal()">关闭</button>');
+    };
+
+    // 构建权限复选框 HTML（按 group 分组）
+    window.buildPermCheckboxes = function(checkedKeys) {
+      var groups = {};
+      ALL_MENUS.forEach(function(m) {
+        if (!groups[m.group]) groups[m.group] = [];
+        groups[m.group].push(m);
+      });
+      var html = '';
+      Object.keys(groups).sort().forEach(function(g) {
+        html += '<div style="margin-bottom:10px"><div style="font-size:12px;font-weight:600;color:#555;margin-bottom:4px;padding-bottom:2px;border-bottom:1px solid #eee">' + g + '</div><div style="display:flex;flex-wrap:wrap;gap:8px">';
+        groups[g].forEach(function(m) {
+          var checked = checkedKeys.indexOf(m.key) !== -1 ? ' checked' : '';
+          html += '<label style="font-size:13px;cursor:pointer;display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:4px;background:#fff;border:1px solid #ddd;' + (checked ? 'border-color:#1a4a7a;background:#eef4fa' : '') + '"><input type="checkbox" value="' + m.key + '" class="role-perm-cb"' + checked + '> ' + m.icon + ' ' + m.label + '</label>';
+        });
+        html += '</div></div>';
+      });
+      // 全选/取消全选
+      html = '<div style="margin-bottom:10px;display:flex;align-items:center;gap:12px;font-size:13px"><label style="cursor:pointer;display:inline-flex;align-items:center;gap:4px"><input type="checkbox" id="permSelectAll" onchange="togglePermAll(this.checked)" style="cursor:pointer"> <b>全选</b></label><label style="cursor:pointer;display:inline-flex;align-items:center;gap:4px;color:#888"><input type="checkbox" id="permSelectNone" onchange="togglePermAll(false)" style="cursor-pointer"> 取消全选</label></div>' + html;
+      return html;
+    };
+
+    window.togglePermAll = function(check) {
+      document.querySelectorAll('.role-perm-cb').forEach(function(cb) { cb.checked = check;
+        cb.parentElement.style.borderColor = check ? '#1a4a7a' : '#ddd';
+        cb.parentElement.style.background = check ? '#eef4fa' : '#fff';
+      });
+      document.getElementById('permSelectAll').checked = check;
+      document.getElementById('permSelectNone').checked = !check;
     };
 
     const __savingRoleId = { val: null };
@@ -3322,6 +3367,12 @@
         <div class="form-row">
           <div class="form-col" style="flex:2"><label class="form-label">角色描述</label><input class="form-input" id="rDesc" placeholder="描述该角色的权限范围"></div>
           <div class="form-col"><label class="form-label">状态</label><select class="form-select" id="rStatus"><option value="1">启用</option><option value="0">停用</option></select></div>
+        </div>
+        <div style="margin-top:16px">
+          <label class="form-label" style="font-weight:600;margin-bottom:8px;display:block">&#128274; 权限维护 <span style="font-weight:400;font-size:12px;color:#888">（勾选该角色可访问的功能模块）</span></label>
+          <div id="rolePermPanel" style="border:1px solid #e8e8e8;border-radius:6px;padding:12px;max-height:280px;overflow-y:auto;background:#fafafa">
+            ${buildPermCheckboxes([])}
+          </div>
         </div>
       `, '<button class="btn btn-default" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveRole()">保存</button>');
     };
@@ -3339,6 +3390,12 @@
           <div class="form-col" style="flex:2"><label class="form-label">角色描述</label><input class="form-input" id="rDesc" value="${r.description || ''}"></div>
           <div class="form-col"><label class="form-label">状态</label><select class="form-select" id="rStatus"><option value="1" ${r.status ? 'selected' : ''}>启用</option><option value="0" ${!r.status ? 'selected' : ''}>停用</option></select></div>
         </div>
+        <div style="margin-top:16px">
+          <label class="form-label" style="font-weight:600;margin-bottom:8px;display:block">&#128274; 权限维护 <span style="font-weight:400;font-size:12px;color:#888">（勾选该角色可访问的功能模块）</span></label>
+          <div id="rolePermPanel" style="border:1px solid #e8e8e8;border-radius:6px;padding:12px;max-height:280px;overflow-y:auto;background:#fafafa">
+            ${buildPermCheckboxes(r.permissions || [])}
+          </div>
+        </div>
       `, '<button class="btn btn-default" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveRole()">保存</button>');
     };
 
@@ -3347,22 +3404,29 @@
       const code = document.getElementById('rCode').value.trim().toLowerCase();
       const desc = document.getElementById('rDesc').value.trim();
       const status = parseInt(document.getElementById('rStatus').value);
+      // 收集权限
+      var perms = [];
+      document.querySelectorAll('.role-perm-cb:checked').forEach(function(cb) { perms.push(cb.value); });
       if (!name || !code) { showToast('请填写必填项', 'warning'); return; }
+      if (perms.length === 0) { showToast('请至少选择一个权限', 'warning'); return; }
       const editId = __savingRoleId.val;
       if (editId) {
         const r = DB.roles.find(x => x.id === editId);
-        if (r) { r.name = name; r.description = desc; r.status = status; }
+        if (r) { r.name = name; r.description = desc; r.status = status; r.permissions = perms; }
         DataStore.set('roles', DB.roles);
         closeModal();
         showToast('修改成功', 'success');
       } else {
         if (DB.roles.find(r => r.code === code)) { showToast('角色标识已存在', 'error'); return; }
         const newId = Math.max(...DB.roles.map(r => r.id), 0) + 1;
-        DB.roles.push({ id: newId, name, code, description: desc, status, userCount: 0, createTime: '2026-07-21' });
+        DB.roles.push({ id: newId, name, code, description: desc, status, userCount: 0, createTime: '2026-07-26', permissions: perms });
         DataStore.set('roles', DB.roles);
         closeModal();
         showToast('保存成功', 'success');
       }
+      // 重建角色菜单配置
+      roleConfig = buildRoleConfig();
+      renderNav();
       renderRoles(document.getElementById('content'));
     };
 

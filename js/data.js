@@ -141,10 +141,10 @@ const MOCK_DATA = {
 
   // 角色管理
   roles: [
-    { id: 1, name: '平台管理员', code: 'admin', description: '系统全部权限，包括参数设置、用户管理、角色权限分配及业务管理等', status: 1, userCount: 1, createTime: '2024-01-01' },
-    { id: 2, name: '食堂管理员', code: 'canteenAdmin', description: '食堂运营管理权限，包括食堂用户管理、预警审核、巡查记录审核等', status: 1, userCount: 2, createTime: '2024-01-01' },
-    { id: 3, name: '从业人员', code: 'staff', description: '基础操作权限，包括留样填报、台账填报、巡检、安全巡查、菜谱维护等', status: 1, userCount: 3, createTime: '2024-01-01' },
-    { id: 4, name: '监管用户', code: 'inspector', description: '食品安全数据查看权限，包括食安数据总览和视频监控查看', status: 1, userCount: 1, createTime: '2024-03-15' }
+    { id: 1, name: '平台管理员', code: 'admin', description: '系统全部权限，包括参数设置、用户管理、角色权限分配及业务管理等', status: 1, userCount: 1, createTime: '2024-01-01', permissions: ['dashboard','devices','alerts','alertReview','samples','personnel','checks','access','monitor','roles','system','ledger','patrol','safetyInspect','recipes','dataView'] },
+    { id: 2, name: '食堂管理员', code: 'canteenAdmin', description: '食堂运营管理权限，包括食堂用户管理、预警审核、巡查记录审核等', status: 1, userCount: 2, createTime: '2024-01-01', permissions: ['dashboard','users','roles','alertReview','patrolReview'] },
+    { id: 3, name: '从业人员', code: 'staff', description: '基础操作权限，包括留样填报、台账填报、巡检、安全巡查、菜谱维护等', status: 1, userCount: 3, createTime: '2024-01-01', permissions: ['samples','ledger','patrol','safetyInspect','recipes'] },
+    { id: 4, name: '监管用户', code: 'inspector', description: '食品安全数据查看权限，包括食安数据总览和视频监控查看', status: 1, userCount: 1, createTime: '2024-03-15', permissions: ['dataView','monitor'] }
   ],
 
   // 系统参数
