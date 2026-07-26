@@ -41,13 +41,15 @@ const MOCK_DATA = {
 
   // 异常行为报警
   alerts: [
-    { id: 1, type: '未正确着装', level: 'high', canteenId: 1, location: '第一食堂后厨', time: '2026-07-21 11:35:22', status: 'pending', handler: null, handleTime: null, description: '检测到从业人员未佩戴工作帽', image: 'assets/alert1.jpg', deviceId: 'CAM001' },
-    { id: 2, type: '抽烟', level: 'high', canteenId: 1, location: '第一食堂后厨', time: '2026-07-21 10:15:00', status: 'handled', handler: '李秀英', handleTime: '2026-07-21 10:20:00', description: '后厨操作间发现抽烟行为', image: null, deviceId: 'CAM001' },
-    { id: 3, type: '垃圾桶未盖', level: 'medium', canteenId: 1, location: '第一食堂备餐区', time: '2026-07-21 09:48:00', status: 'handled', handler: '陈小梅', handleTime: '2026-07-21 09:52:00', description: '垃圾桶未加盖超过5分钟', image: null, deviceId: 'CAM002' },
-    { id: 4, type: '玩手机', level: 'low', canteenId: 2, location: '第二食堂窗口', time: '2026-07-21 08:30:00', status: 'handled', handler: '王大明', handleTime: '2026-07-21 08:35:00', description: '打餐期间玩手机', image: null, deviceId: 'CAM003' },
-    { id: 5, type: '有老鼠', level: 'high', canteenId: 1, location: '第一食堂仓库A区', time: '2026-07-20 22:10:00', status: 'handled', handler: '李秀英', handleTime: '2026-07-20 22:30:00', description: '夜间监控发现老鼠活动，已安排消杀', image: null, deviceId: 'CAM004' },
-    { id: 6, type: '未正确着装', level: 'medium', canteenId: 2, location: '第二食堂面点间', time: '2026-07-20 06:00:00', status: 'handled', handler: '王大明', handleTime: '2026-07-20 06:10:00', description: '面点师未佩戴口罩', image: null, deviceId: 'CAM005' },
-    { id: 7, type: '垃圾桶未盖', level: 'low', canteenId: 1, location: '第一食堂粗加工间', time: '2026-07-19 14:20:00', status: 'handled', handler: '陈小梅', handleTime: '2026-07-19 14:25:00', description: '厨余垃圾桶未盖', image: null, deviceId: 'CAM002' }
+    { id: 1, type: '未正确着装', level: 'high', canteenId: 1, location: '第一食堂后厨', time: '2026-07-26 11:35:22', status: 'pending', handler: null, handleTime: null, description: '检测到从业人员未佩戴工作帽', image: 'assets/alert1.jpg', deviceId: 'CAM001' },
+    { id: 2, type: '抽烟', level: 'high', canteenId: 1, location: '第一食堂后厨', time: '2026-07-26 10:15:00', status: 'pending', handler: null, handleTime: null, description: '后厨操作间发现抽烟行为', image: null, deviceId: 'CAM001' },
+    { id: 3, type: '垃圾桶未盖', level: 'medium', canteenId: 1, location: '第一食堂备餐区', time: '2026-07-26 09:48:00', status: 'pending', handler: null, handleTime: null, description: '垃圾桶未加盖超过5分钟', image: null, deviceId: 'CAM002' },
+    { id: 4, type: '玩手机', level: 'low', canteenId: 2, location: '第二食堂窗口', time: '2026-07-26 08:30:00', status: 'pending', handler: null, handleTime: null, description: '打餐期间玩手机', image: null, deviceId: 'CAM003' },
+    { id: 5, type: '有老鼠', level: 'high', canteenId: 1, location: '第一食堂仓库A区', time: '2026-07-25 22:10:00', status: 'pending', handler: null, handleTime: null, description: '夜间监控发现老鼠活动，需安排消杀', image: null, deviceId: 'CAM004' },
+    { id: 6, type: '未正确着装', level: 'medium', canteenId: 2, location: '第二食堂面点间', time: '2026-07-25 06:00:00', status: 'handled', handler: '王大明', handleTime: '2026-07-25 06:10:00', description: '面点师未佩戴口罩', image: null, deviceId: 'CAM005' },
+    { id: 7, type: '垃圾桶未盖', level: 'low', canteenId: 1, location: '第一食堂粗加工间', time: '2026-07-24 14:20:00', status: 'handled', handler: '陈小梅', handleTime: '2026-07-24 14:25:00', description: '厨余垃圾桶未盖', image: null, deviceId: 'CAM002' },
+    { id: 8, type: '温湿度超标', level: 'high', canteenId: 1, location: '第一食堂冷藏库', time: '2026-07-26 12:05:00', status: 'pending', handler: null, handleTime: null, description: '冷藏库温度持续高于8°C，已超阈值', image: null, deviceId: 'TEMP001' },
+    { id: 9, type: '挡鼠板异常', level: 'medium', canteenId: 2, location: '第二食堂后门', time: '2026-07-26 07:20:00', status: 'pending', handler: null, handleTime: null, description: '挡鼠板位移传感器触发，可能被挪动', image: null, deviceId: 'RODENT001' }
   ],
 
   // 留样数据
@@ -236,6 +238,12 @@ const DataStore = {
     if (!this.get('recipes')) this.set('recipes', MOCK_DATA.recipes);
     if (!this.get('sysParams')) {
       this.set('sysParams', MOCK_DATA.sysParams);
+    }
+    // 数据版本迁移：确保预警数据包含待审核记录
+    const DATA_VERSION = '2026-07-26';
+    if (this.get('dataVersion') !== DATA_VERSION) {
+      this.set('alerts', MOCK_DATA.alerts);
+      this.set('dataVersion', DATA_VERSION);
     }
   },
   getAll() {
