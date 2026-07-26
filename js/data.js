@@ -153,7 +153,48 @@ const MOCK_DATA = {
     healthCertWarnDays: 30,
     alertAutoHandleHours: 24,
     backupSchedule: '每日凌晨2:00'
-  }
+  },
+
+  // 台账填报（采购/消毒/废弃物/添加剂）
+  ledgers: [
+    { id: 1, canteenId: 1, date: '2026-07-21', type: '采购验收台账', item: '大米', quantity: '50', unit: 'kg', operator: '陈小梅', remark: '供应商资质齐全，索证索票完整', status: '已提交' },
+    { id: 2, canteenId: 1, date: '2026-07-21', type: '餐具消毒台账', item: '餐盘/碗筷', quantity: '300', unit: '件', operator: '刘志强', remark: '消毒温度85℃，时长30分钟', status: '已提交' },
+    { id: 3, canteenId: 1, date: '2026-07-20', type: '餐厨废弃物台账', item: '泔水', quantity: '40', unit: 'kg', operator: '陈小梅', remark: '由资质单位统一回收', status: '已提交' },
+    { id: 4, canteenId: 1, date: '2026-07-20', type: '添加剂使用台账', item: '泡打粉', quantity: '0.2', unit: 'kg', operator: '刘志强', remark: '专人保管，按需领用', status: '已提交' },
+    { id: 5, canteenId: 2, date: '2026-07-21', type: '采购验收台账', item: '食用油', quantity: '20', unit: 'L', operator: '赵玉华', remark: '品牌合格，留样检测', status: '已提交' },
+    { id: 6, canteenId: 2, date: '2026-07-19', type: '餐具消毒台账', item: '餐盘/碗筷', quantity: '260', unit: '件', operator: '赵玉华', remark: '消毒柜运行正常', status: '待提交' }
+  ],
+
+  // 巡检（区域卫生/设施/操作）
+  patrols: [
+    { id: 1, canteenId: 1, date: '2026-07-21', area: '后厨操作区', inspector: '陈小梅', item: '地面卫生/灶台清洁', result: '正常', problem: '', status: '已完成' },
+    { id: 2, canteenId: 1, date: '2026-07-21', area: '仓库A区', inspector: '刘志强', item: '离墙离地/防鼠设施', result: '异常', problem: '3号货架离地不足10cm，已现场整改', status: '已完成' },
+    { id: 3, canteenId: 1, date: '2026-07-20', area: '餐具消毒间', inspector: '陈小梅', item: '消毒柜运行/餐具存放', result: '正常', problem: '', status: '已完成' },
+    { id: 4, canteenId: 2, date: '2026-07-21', area: '面点间', inspector: '赵玉华', item: '操作台/工具归置', result: '正常', problem: '', status: '已完成' },
+    { id: 5, canteenId: 2, date: '2026-07-20', area: '后厨出入口', inspector: '赵玉华', item: '挡鼠板完好性', result: '异常', problem: '挡鼠板02倾斜，已报修', status: '待复核' },
+    { id: 6, canteenId: 1, date: '2026-07-19', area: '粗加工间', inspector: '刘志强', item: '生熟分开/水槽使用', result: '正常', problem: '', status: '已完成' }
+  ],
+
+  // 食安巡查（环境卫生/加工操作/人员卫生/设施设备）
+  safetyInspects: [
+    { id: 1, canteenId: 1, date: '2026-07-21', time: '09:00', inspector: '李秀英', category: '人员卫生', finding: '个别人员工作帽佩戴不规范', level: '中', handler: '陈小梅', status: '已整改' },
+    { id: 2, canteenId: 1, date: '2026-07-20', time: '14:30', inspector: '李秀英', category: '加工操作', finding: '生熟砧板混用，已现场纠正', level: '高', handler: '刘志强', status: '已整改' },
+    { id: 3, canteenId: 1, date: '2026-07-20', time: '10:15', inspector: '李秀英', category: '环境卫生', finding: '仓库角落有轻微积水，已清理', level: '低', handler: '陈小梅', status: '已整改' },
+    { id: 4, canteenId: 2, date: '2026-07-21', time: '08:40', inspector: '王大明', category: '设施设备', finding: '消毒柜温度显示偏低', level: '中', handler: '赵玉华', status: '待整改' },
+    { id: 5, canteenId: 2, date: '2026-07-19', time: '16:00', inspector: '王大明', category: '人员卫生', finding: '健康证到期提醒已下发', level: '低', handler: '赵玉华', status: '已复核' }
+  ],
+
+  // 菜谱信息维护
+  recipes: [
+    { id: 1, canteenId: 1, mealType: '早餐', date: '周一', dishName: '皮蛋瘦肉粥', category: '主食', price: '3.0', status: '启用' },
+    { id: 2, canteenId: 1, mealType: '午餐', date: '周一', dishName: '红烧肉', category: '荤菜', price: '10.0', status: '启用' },
+    { id: 3, canteenId: 1, mealType: '午餐', date: '周一', dishName: '清炒时蔬', category: '素菜', price: '4.0', status: '启用' },
+    { id: 4, canteenId: 1, mealType: '午餐', date: '周一', dishName: '紫菜蛋花汤', category: '汤品', price: '2.0', status: '启用' },
+    { id: 5, canteenId: 1, mealType: '晚餐', date: '周一', dishName: '宫保鸡丁', category: '荤菜', price: '9.0', status: '启用' },
+    { id: 6, canteenId: 2, mealType: '午餐', date: '周一', dishName: '糖醋里脊', category: '荤菜', price: '10.0', status: '启用' },
+    { id: 7, canteenId: 2, mealType: '午餐', date: '周一', dishName: '番茄炒蛋', category: '荤菜', price: '6.0', status: '启用' },
+    { id: 8, canteenId: 2, mealType: '晚餐', date: '周一', dishName: '凉拌黄瓜', category: '素菜', price: '3.0', status: '停用' }
+  ]
 };
 
 // 工具函数
@@ -181,10 +222,18 @@ const DataStore = {
       this.set('notices', MOCK_DATA.notices);
       this.set('roles', MOCK_DATA.roles);
       this.set('sysParams', MOCK_DATA.sysParams);
+      this.set('ledgers', MOCK_DATA.ledgers);
+      this.set('patrols', MOCK_DATA.patrols);
+      this.set('safetyInspects', MOCK_DATA.safetyInspects);
+      this.set('recipes', MOCK_DATA.recipes);
       this.set('initialized', true);
     } else if (!this.get('roles')) {
       this.set('roles', MOCK_DATA.roles);
     }
+    if (!this.get('ledgers')) this.set('ledgers', MOCK_DATA.ledgers);
+    if (!this.get('patrols')) this.set('patrols', MOCK_DATA.patrols);
+    if (!this.get('safetyInspects')) this.set('safetyInspects', MOCK_DATA.safetyInspects);
+    if (!this.get('recipes')) this.set('recipes', MOCK_DATA.recipes);
     if (!this.get('sysParams')) {
       this.set('sysParams', MOCK_DATA.sysParams);
     }
@@ -204,7 +253,11 @@ const DataStore = {
       menus: this.get('menus') || MOCK_DATA.menus,
       notices: this.get('notices') || MOCK_DATA.notices,
       roles: this.get('roles') || MOCK_DATA.roles,
-      sysParams: this.get('sysParams') || MOCK_DATA.sysParams
+      sysParams: this.get('sysParams') || MOCK_DATA.sysParams,
+      ledgers: this.get('ledgers') || MOCK_DATA.ledgers,
+      patrols: this.get('patrols') || MOCK_DATA.patrols,
+      safetyInspects: this.get('safetyInspects') || MOCK_DATA.safetyInspects,
+      recipes: this.get('recipes') || MOCK_DATA.recipes
     };
   }
 };

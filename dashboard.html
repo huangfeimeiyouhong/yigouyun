@@ -725,6 +725,10 @@
         { key: 'samples', label: '留样管理', icon: '&#129379;' },
         { key: 'personnel', label: '人员管理', icon: '&#128100;' },
         { key: 'checks', label: '晨午晚检', icon: '&#129658;' },
+        { key: 'ledger', label: '台账填报', icon: '&#128221;' },
+        { key: 'patrol', label: '巡检记录', icon: '&#128269;' },
+        { key: 'safetyInspect', label: '食安巡查', icon: '&#128737;' },
+        { key: 'recipes', label: '菜谱维护', icon: '&#127869;' },
         { key: 'access', label: '门禁管理', icon: '&#128275;' },
         { key: 'monitor', label: '视频监控', icon: '&#127909;' },
       ]},
@@ -732,6 +736,10 @@
         { key: 'dashboard', label: '工作台', icon: '&#128202;' },
         { key: 'samples', label: '我的留样', icon: '&#129379;' },
         { key: 'checks', label: '我的检查', icon: '&#129658;' },
+        { key: 'ledger', label: '台账填报', icon: '&#128221;' },
+        { key: 'patrol', label: '巡检记录', icon: '&#128269;' },
+        { key: 'safetyInspect', label: '食安巡查', icon: '&#128737;' },
+        { key: 'recipes', label: '菜谱维护', icon: '&#127869;' },
         { key: 'personnel', label: '个人信息', icon: '&#128100;' },
       ]},
       inspector: { name: '监管用户', menus: [
@@ -908,6 +916,10 @@
         case 'alerts': renderAlerts(content); break;
         case 'alertReview': renderAlertReview(content); break;
         case 'samples': renderSamples(content); break;
+        case 'ledger': renderLedger(content); break;
+        case 'patrol': renderPatrol(content); break;
+        case 'safetyInspect': renderSafetyInspect(content); break;
+        case 'recipes': renderRecipes(content); break;
         case 'personnel': renderPersonnel(content); break;
         case 'checks': renderChecks(content); break;
         case 'access': renderAccess(content); break;
@@ -2178,6 +2190,566 @@
         showToast('保存成功', 'success');
       }
       renderAccess(document.getElementById('content'));
+    };
+
+    // ===== 台账填报 =====
+    function renderLedger(el) {
+      setBreadcrumb(['首页', '台账填报']);
+      let list = currentUser.canteenId ? DB.ledgers.filter(x => x.canteenId === currentUser.canteenId) : DB.ledgers;
+      window.ledgerPageState = window.ledgerPageState || { currentPage: 1, pageSize: 10 };
+      var state = window.ledgerPageState;
+      var totalCount = list.length;
+      var paged = list.slice((state.currentPage - 1) * state.pageSize, state.currentPage * state.pageSize);
+      const headers = ['ID', '日期', '台账类型', '品名/项目', '数量', '单位', '填报人', '状态', '操作'];
+      const rows = paged.map(l => {
+        const statusTag = l.status === '已提交' ? '<span class="tag tag-green">已提交</span>' : '<span class="tag tag-orange">待提交</span>';
+        return [l.id, l.date, l.type, l.item, l.quantity, l.unit, l.operator, statusTag,
+          `<button class="btn btn-sm btn-default" onclick="showLedgerDetail(${l.id})">详情</button>` +
+          ` <button class="btn btn-sm btn-primary" onclick="editLedger(${l.id})">编辑</button>` +
+          ` <button class="btn btn-sm btn-danger" onclick="deleteLedger(${l.id})">删除</button>`];
+      });
+      el.innerHTML = `
+        <div class="filter-bar">
+          <select id="ledgerTypeFilter" onchange="filterLedgerList()"><option value="">全部类型</option><option>采购验收台账</option><option>餐具消毒台账</option><option>餐厨废弃物台账</option><option>添加剂使用台账</option></select>
+          <select id="ledgerStatusFilter" onchange="filterLedgerList()"><option value="">全部状态</option><option>已提交</option><option>待提交</option></select>
+          <input type="text" id="ledgerSearchInput" placeholder="搜索品名/项目" oninput="filterLedgerList()">
+          <button class="btn btn-primary" onclick="openLedgerModal()">+ 新增台账</button>
+        </div>
+        <div class="card"><div class="card-body" id="ledgerTableBody">
+          ${renderTable(headers, rows)}
+          ${renderPaginationBar(state, 'goToLedgerPage', totalCount)}
+        </div></div>`;
+    }
+    window.goToLedgerPage = function(page) { window.ledgerPageState.currentPage = page; renderLedger(document.getElementById('content')); };
+    window.filterLedgerList = function() {
+      window.ledgerPageState = window.ledgerPageState || { currentPage: 1, pageSize: 10 };
+      window.ledgerPageState.currentPage = 1;
+      const typeFilter = document.getElementById('ledgerTypeFilter').value;
+      const statusFilter = document.getElementById('ledgerStatusFilter').value;
+      const keyword = (document.getElementById('ledgerSearchInput').value || '').trim().toLowerCase();
+      let list = currentUser.canteenId ? DB.ledgers.filter(x => x.canteenId === currentUser.canteenId) : DB.ledgers;
+      if (typeFilter) list = list.filter(x => x.type === typeFilter);
+      if (statusFilter) list = list.filter(x => x.status === statusFilter);
+      if (keyword) list = list.filter(x => (x.item + x.type).toLowerCase().includes(keyword));
+      var state = window.ledgerPageState, totalCount = list.length;
+      var paged = list.slice((state.currentPage - 1) * state.pageSize, state.currentPage * state.pageSize);
+      const headers = ['ID', '日期', '台账类型', '品名/项目', '数量', '单位', '填报人', '状态', '操作'];
+      const rows = paged.map(l => {
+        const statusTag = l.status === '已提交' ? '<span class="tag tag-green">已提交</span>' : '<span class="tag tag-orange">待提交</span>';
+        return [l.id, l.date, l.type, l.item, l.quantity, l.unit, l.operator, statusTag,
+          `<button class="btn btn-sm btn-default" onclick="showLedgerDetail(${l.id})">详情</button>` +
+          ` <button class="btn btn-sm btn-primary" onclick="editLedger(${l.id})">编辑</button>` +
+          ` <button class="btn btn-sm btn-danger" onclick="deleteLedger(${l.id})">删除</button>`];
+      });
+      document.getElementById('ledgerTableBody').innerHTML = renderTable(headers, rows) + renderPaginationBar(state, 'goToLedgerPage', totalCount);
+    };
+    const __editingLedgerId = { val: null };
+    window.openLedgerModal = function() {
+      __editingLedgerId.val = null;
+      openModal('新增台账', `
+        <div class="form-row">
+          <div class="form-col"><label class="form-label">填报日期<span class="required">*</span></label><input class="form-input" type="date" id="lDate" value="${new Date().toISOString().slice(0,10)}"></div>
+          <div class="form-col"><label class="form-label">台账类型<span class="required">*</span></label><select class="form-select" id="lType"><option>采购验收台账</option><option>餐具消毒台账</option><option>餐厨废弃物台账</option><option>添加剂使用台账</option></select></div>
+        </div>
+        <div class="form-row">
+          <div class="form-col"><label class="form-label">品名/项目<span class="required">*</span></label><input class="form-input" id="lItem" placeholder="如：大米"></div>
+          <div class="form-col"><label class="form-label">填报人<span class="required">*</span></label><input class="form-input" id="lOperator" value="${currentUser.realName}"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-col"><label class="form-label">数量<span class="required">*</span></label><input class="form-input" id="lQty" placeholder="如：50"></div>
+          <div class="form-col"><label class="form-label">单位</label><input class="form-input" id="lUnit" placeholder="如：kg"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-col"><label class="form-label">状态</label><select class="form-select" id="lStatus"><option>已提交</option><option>待提交</option></select></div>
+          <div class="form-col"><label class="form-label">备注</label><input class="form-input" id="lRemark" placeholder="补充说明"></div>
+        </div>
+      `, '<button class="btn btn-default" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveLedger()">保存</button>');
+    };
+    window.editLedger = function(id) {
+      const l = DB.ledgers.find(x => x.id === id); if (!l) return;
+      __editingLedgerId.val = id;
+      openModal('编辑台账', `
+        <div class="form-row">
+          <div class="form-col"><label class="form-label">填报日期<span class="required">*</span></label><input class="form-input" type="date" id="lDate" value="${l.date}"></div>
+          <div class="form-col"><label class="form-label">台账类型<span class="required">*</span></label><select class="form-select" id="lType"><option ${l.type === '采购验收台账' ? 'selected' : ''}>采购验收台账</option><option ${l.type === '餐具消毒台账' ? 'selected' : ''}>餐具消毒台账</option><option ${l.type === '餐厨废弃物台账' ? 'selected' : ''}>餐厨废弃物台账</option><option ${l.type === '添加剂使用台账' ? 'selected' : ''}>添加剂使用台账</option></select></div>
+        </div>
+        <div class="form-row">
+          <div class="form-col"><label class="form-label">品名/项目<span class="required">*</span></label><input class="form-input" id="lItem" value="${l.item}"></div>
+          <div class="form-col"><label class="form-label">填报人<span class="required">*</span></label><input class="form-input" id="lOperator" value="${l.operator}"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-col"><label class="form-label">数量<span class="required">*</span></label><input class="form-input" id="lQty" value="${l.quantity}"></div>
+          <div class="form-col"><label class="form-label">单位</label><input class="form-input" id="lUnit" value="${l.unit}"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-col"><label class="form-label">状态</label><select class="form-select" id="lStatus"><option ${l.status === '已提交' ? 'selected' : ''}>已提交</option><option ${l.status === '待提交' ? 'selected' : ''}>待提交</option></select></div>
+          <div class="form-col"><label class="form-label">备注</label><input class="form-input" id="lRemark" value="${l.remark || ''}"></div>
+        </div>
+      `, '<button class="btn btn-default" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveLedger()">保存</button>');
+    };
+    window.showLedgerDetail = function(id) {
+      const l = DB.ledgers.find(x => x.id === id); if (!l) return;
+      const canteen = DB.canteens.find(c => c.id === l.canteenId);
+      openModal('台账详情', `
+        <div class="detail-list">
+          <div class="detail-item"><div class="label">所属食堂</div><div class="value">${canteen ? canteen.name : '-'}</div></div>
+          <div class="detail-item"><div class="label">填报日期</div><div class="value">${l.date}</div></div>
+          <div class="detail-item"><div class="label">台账类型</div><div class="value">${l.type}</div></div>
+          <div class="detail-item"><div class="label">品名/项目</div><div class="value">${l.item}</div></div>
+          <div class="detail-item"><div class="label">数量</div><div class="value">${l.quantity} ${l.unit}</div></div>
+          <div class="detail-item"><div class="label">填报人</div><div class="value">${l.operator}</div></div>
+          <div class="detail-item"><div class="label">状态</div><div class="value">${l.status}</div></div>
+          <div class="detail-item" style="grid-column:span 2"><div class="label">备注</div><div class="value">${l.remark || '-'}</div></div>
+        </div>`, '<button class="btn btn-default" onclick="closeModal()">关闭</button>');
+    };
+    window.deleteLedger = function(id) {
+      showConfirm('确认删除该台账记录？此操作不可撤销。', {
+        onConfirm: () => {
+          const idx = DB.ledgers.findIndex(x => x.id === id);
+          if (idx > -1) { DB.ledgers.splice(idx, 1); DataStore.set('ledgers', DB.ledgers); }
+          showToast('已删除', 'success'); renderLedger(document.getElementById('content'));
+        }
+      });
+    };
+    window.saveLedger = function() {
+      const date = document.getElementById('lDate').value;
+      const type = document.getElementById('lType').value;
+      const item = document.getElementById('lItem').value.trim();
+      const operator = document.getElementById('lOperator').value.trim();
+      const qty = document.getElementById('lQty').value.trim();
+      if (!date || !item || !operator || !qty) { showToast('请填写必填项', 'warning'); return; }
+      const data = {
+        date, type, item, operator, quantity: qty,
+        unit: document.getElementById('lUnit').value.trim(),
+        remark: document.getElementById('lRemark').value.trim(),
+        status: document.getElementById('lStatus').value
+      };
+      if (__editingLedgerId.val) {
+        const l = DB.ledgers.find(x => x.id === __editingLedgerId.val);
+        Object.assign(l, data);
+      } else {
+        data.id = Math.max(0, ...DB.ledgers.map(x => x.id)) + 1;
+        data.canteenId = currentUser.canteenId || 1;
+        DB.ledgers.push(data);
+      }
+      DataStore.set('ledgers', DB.ledgers); closeModal();
+      showToast('保存成功', 'success'); renderLedger(document.getElementById('content'));
+    };
+
+    // ===== 巡检记录 =====
+    function renderPatrol(el) {
+      setBreadcrumb(['首页', '巡检记录']);
+      let list = currentUser.canteenId ? DB.patrols.filter(x => x.canteenId === currentUser.canteenId) : DB.patrols;
+      window.patrolPageState = window.patrolPageState || { currentPage: 1, pageSize: 10 };
+      var state = window.patrolPageState;
+      var totalCount = list.length;
+      var paged = list.slice((state.currentPage - 1) * state.pageSize, state.currentPage * state.pageSize);
+      const headers = ['ID', '日期', '巡检区域', '巡检人', '巡检内容', '结果', '问题描述', '状态', '操作'];
+      const rows = paged.map(p => {
+        const resultTag = p.result === '正常' ? '<span class="tag tag-green">正常</span>' : '<span class="tag tag-red">异常</span>';
+        const statusTag = p.status === '已完成' ? '<span class="tag tag-green">已完成</span>' : '<span class="tag tag-orange">待复核</span>';
+        return [p.id, p.date, p.area, p.inspector, p.item, resultTag, p.problem || '-', statusTag,
+          `<button class="btn btn-sm btn-default" onclick="showPatrolDetail(${p.id})">详情</button>` +
+          ` <button class="btn btn-sm btn-primary" onclick="editPatrol(${p.id})">编辑</button>` +
+          ` <button class="btn btn-sm btn-danger" onclick="deletePatrol(${p.id})">删除</button>`];
+      });
+      el.innerHTML = `
+        <div class="filter-bar">
+          <select id="patrolResultFilter" onchange="filterPatrolList()"><option value="">全部结果</option><option>正常</option><option>异常</option></select>
+          <select id="patrolStatusFilter" onchange="filterPatrolList()"><option value="">全部状态</option><option>已完成</option><option>待复核</option></select>
+          <input type="text" id="patrolSearchInput" placeholder="搜索区域/内容" oninput="filterPatrolList()">
+          <button class="btn btn-primary" onclick="openPatrolModal()">+ 新增巡检</button>
+        </div>
+        <div class="card"><div class="card-body" id="patrolTableBody">
+          ${renderTable(headers, rows)}
+          ${renderPaginationBar(state, 'goToPatrolPage', totalCount)}
+        </div></div>`;
+    }
+    window.goToPatrolPage = function(page) { window.patrolPageState.currentPage = page; renderPatrol(document.getElementById('content')); };
+    window.filterPatrolList = function() {
+      window.patrolPageState = window.patrolPageState || { currentPage: 1, pageSize: 10 };
+      window.patrolPageState.currentPage = 1;
+      const resultFilter = document.getElementById('patrolResultFilter').value;
+      const statusFilter = document.getElementById('patrolStatusFilter').value;
+      const keyword = (document.getElementById('patrolSearchInput').value || '').trim().toLowerCase();
+      let list = currentUser.canteenId ? DB.patrols.filter(x => x.canteenId === currentUser.canteenId) : DB.patrols;
+      if (resultFilter) list = list.filter(x => x.result === resultFilter);
+      if (statusFilter) list = list.filter(x => x.status === statusFilter);
+      if (keyword) list = list.filter(x => (x.area + x.item).toLowerCase().includes(keyword));
+      var state = window.patrolPageState, totalCount = list.length;
+      var paged = list.slice((state.currentPage - 1) * state.pageSize, state.currentPage * state.pageSize);
+      const headers = ['ID', '日期', '巡检区域', '巡检人', '巡检内容', '结果', '问题描述', '状态', '操作'];
+      const rows = paged.map(p => {
+        const resultTag = p.result === '正常' ? '<span class="tag tag-green">正常</span>' : '<span class="tag tag-red">异常</span>';
+        const statusTag = p.status === '已完成' ? '<span class="tag tag-green">已完成</span>' : '<span class="tag tag-orange">待复核</span>';
+        return [p.id, p.date, p.area, p.inspector, p.item, resultTag, p.problem || '-', statusTag,
+          `<button class="btn btn-sm btn-default" onclick="showPatrolDetail(${p.id})">详情</button>` +
+          ` <button class="btn btn-sm btn-primary" onclick="editPatrol(${p.id})">编辑</button>` +
+          ` <button class="btn btn-sm btn-danger" onclick="deletePatrol(${p.id})">删除</button>`];
+      });
+      document.getElementById('patrolTableBody').innerHTML = renderTable(headers, rows) + renderPaginationBar(state, 'goToPatrolPage', totalCount);
+    };
+    const __editingPatrolId = { val: null };
+    window.openPatrolModal = function() {
+      __editingPatrolId.val = null;
+      openModal('新增巡检', `
+        <div class="form-row">
+          <div class="form-col"><label class="form-label">巡检日期<span class="required">*</span></label><input class="form-input" type="date" id="pDate" value="${new Date().toISOString().slice(0,10)}"></div>
+          <div class="form-col"><label class="form-label">巡检区域<span class="required">*</span></label><input class="form-input" id="pArea" placeholder="如：后厨操作区"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-col"><label class="form-label">巡检人<span class="required">*</span></label><input class="form-input" id="pInspector" value="${currentUser.realName}"></div>
+          <div class="form-col"><label class="form-label">巡检内容<span class="required">*</span></label><input class="form-input" id="pItem" placeholder="如：地面卫生/灶台清洁"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-col"><label class="form-label">结果</label><select class="form-select" id="pResult"><option>正常</option><option>异常</option></select></div>
+          <div class="form-col"><label class="form-label">状态</label><select class="form-select" id="pStatus"><option>已完成</option><option>待复核</option></select></div>
+        </div>
+        <div class="form-row">
+          <div class="form-col" style="flex:1"><label class="form-label">问题描述</label><input class="form-input" id="pProblem" placeholder="异常情况说明"></div>
+        </div>
+      `, '<button class="btn btn-default" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="savePatrol()">保存</button>');
+    };
+    window.editPatrol = function(id) {
+      const p = DB.patrols.find(x => x.id === id); if (!p) return;
+      __editingPatrolId.val = id;
+      openModal('编辑巡检', `
+        <div class="form-row">
+          <div class="form-col"><label class="form-label">巡检日期<span class="required">*</span></label><input class="form-input" type="date" id="pDate" value="${p.date}"></div>
+          <div class="form-col"><label class="form-label">巡检区域<span class="required">*</span></label><input class="form-input" id="pArea" value="${p.area}"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-col"><label class="form-label">巡检人<span class="required">*</span></label><input class="form-input" id="pInspector" value="${p.inspector}"></div>
+          <div class="form-col"><label class="form-label">巡检内容<span class="required">*</span></label><input class="form-input" id="pItem" value="${p.item}"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-col"><label class="form-label">结果</label><select class="form-select" id="pResult"><option ${p.result === '正常' ? 'selected' : ''}>正常</option><option ${p.result === '异常' ? 'selected' : ''}>异常</option></select></div>
+          <div class="form-col"><label class="form-label">状态</label><select class="form-select" id="pStatus"><option ${p.status === '已完成' ? 'selected' : ''}>已完成</option><option ${p.status === '待复核' ? 'selected' : ''}>待复核</option></select></div>
+        </div>
+        <div class="form-row">
+          <div class="form-col" style="flex:1"><label class="form-label">问题描述</label><input class="form-input" id="pProblem" value="${p.problem || ''}"></div>
+        </div>
+      `, '<button class="btn btn-default" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="savePatrol()">保存</button>');
+    };
+    window.showPatrolDetail = function(id) {
+      const p = DB.patrols.find(x => x.id === id); if (!p) return;
+      const canteen = DB.canteens.find(c => c.id === p.canteenId);
+      openModal('巡检详情', `
+        <div class="detail-list">
+          <div class="detail-item"><div class="label">所属食堂</div><div class="value">${canteen ? canteen.name : '-'}</div></div>
+          <div class="detail-item"><div class="label">巡检日期</div><div class="value">${p.date}</div></div>
+          <div class="detail-item"><div class="label">巡检区域</div><div class="value">${p.area}</div></div>
+          <div class="detail-item"><div class="label">巡检人</div><div class="value">${p.inspector}</div></div>
+          <div class="detail-item"><div class="label">巡检内容</div><div class="value">${p.item}</div></div>
+          <div class="detail-item"><div class="label">结果</div><div class="value">${p.result}</div></div>
+          <div class="detail-item" style="grid-column:span 2"><div class="label">问题描述</div><div class="value">${p.problem || '-'}</div></div>
+          <div class="detail-item"><div class="label">状态</div><div class="value">${p.status}</div></div>
+        </div>`, '<button class="btn btn-default" onclick="closeModal()">关闭</button>');
+    };
+    window.deletePatrol = function(id) {
+      showConfirm('确认删除该巡检记录？此操作不可撤销。', {
+        onConfirm: () => {
+          const idx = DB.patrols.findIndex(x => x.id === id);
+          if (idx > -1) { DB.patrols.splice(idx, 1); DataStore.set('patrols', DB.patrols); }
+          showToast('已删除', 'success'); renderPatrol(document.getElementById('content'));
+        }
+      });
+    };
+    window.savePatrol = function() {
+      const date = document.getElementById('pDate').value;
+      const area = document.getElementById('pArea').value.trim();
+      const inspector = document.getElementById('pInspector').value.trim();
+      const item = document.getElementById('pItem').value.trim();
+      if (!date || !area || !inspector || !item) { showToast('请填写必填项', 'warning'); return; }
+      const data = {
+        date, area, inspector, item,
+        result: document.getElementById('pResult').value,
+        status: document.getElementById('pStatus').value,
+        problem: document.getElementById('pProblem').value.trim()
+      };
+      if (__editingPatrolId.val) {
+        Object.assign(DB.patrols.find(x => x.id === __editingPatrolId.val), data);
+      } else {
+        data.id = Math.max(0, ...DB.patrols.map(x => x.id)) + 1;
+        data.canteenId = currentUser.canteenId || 1;
+        DB.patrols.push(data);
+      }
+      DataStore.set('patrols', DB.patrols); closeModal();
+      showToast('保存成功', 'success'); renderPatrol(document.getElementById('content'));
+    };
+
+    // ===== 食安巡查 =====
+    function renderSafetyInspect(el) {
+      setBreadcrumb(['首页', '食安巡查']);
+      let list = currentUser.canteenId ? DB.safetyInspects.filter(x => x.canteenId === currentUser.canteenId) : DB.safetyInspects;
+      window.safetyPageState = window.safetyPageState || { currentPage: 1, pageSize: 10 };
+      var state = window.safetyPageState;
+      var totalCount = list.length;
+      var paged = list.slice((state.currentPage - 1) * state.pageSize, state.currentPage * state.pageSize);
+      const headers = ['ID', '日期', '时间', '巡查类别', '发现问题', '级别', '整改人', '状态', '操作'];
+      const rows = paged.map(s => {
+        const levelTag = s.level === '高' ? '<span class="tag tag-red">高</span>' : s.level === '中' ? '<span class="tag tag-orange">中</span>' : '<span class="tag tag-blue">低</span>';
+        const statusTag = s.status === '已整改' ? '<span class="tag tag-green">已整改</span>' : s.status === '已复核' ? '<span class="tag tag-blue">已复核</span>' : '<span class="tag tag-red">待整改</span>';
+        return [s.id, s.date, s.time, s.category, s.finding, levelTag, s.handler, statusTag,
+          `<button class="btn btn-sm btn-default" onclick="showSafetyDetail(${s.id})">详情</button>` +
+          ` <button class="btn btn-sm btn-primary" onclick="editSafety(${s.id})">编辑</button>` +
+          ` <button class="btn btn-sm btn-danger" onclick="deleteSafety(${s.id})">删除</button>`];
+      });
+      el.innerHTML = `
+        <div class="filter-bar">
+          <select id="safetyCategoryFilter" onchange="filterSafetyList()"><option value="">全部类别</option><option>环境卫生</option><option>加工操作</option><option>人员卫生</option><option>设施设备</option></select>
+          <select id="safetyStatusFilter" onchange="filterSafetyList()"><option value="">全部状态</option><option>待整改</option><option>已整改</option><option>已复核</option></select>
+          <input type="text" id="safetySearchInput" placeholder="搜索问题/整改人" oninput="filterSafetyList()">
+          <button class="btn btn-primary" onclick="openSafetyModal()">+ 新增巡查</button>
+        </div>
+        <div class="card"><div class="card-body" id="safetyTableBody">
+          ${renderTable(headers, rows)}
+          ${renderPaginationBar(state, 'goToSafetyPage', totalCount)}
+        </div></div>`;
+    }
+    window.goToSafetyPage = function(page) { window.safetyPageState.currentPage = page; renderSafetyInspect(document.getElementById('content')); };
+    window.filterSafetyList = function() {
+      window.safetyPageState = window.safetyPageState || { currentPage: 1, pageSize: 10 };
+      window.safetyPageState.currentPage = 1;
+      const categoryFilter = document.getElementById('safetyCategoryFilter').value;
+      const statusFilter = document.getElementById('safetyStatusFilter').value;
+      const keyword = (document.getElementById('safetySearchInput').value || '').trim().toLowerCase();
+      let list = currentUser.canteenId ? DB.safetyInspects.filter(x => x.canteenId === currentUser.canteenId) : DB.safetyInspects;
+      if (categoryFilter) list = list.filter(x => x.category === categoryFilter);
+      if (statusFilter) list = list.filter(x => x.status === statusFilter);
+      if (keyword) list = list.filter(x => (x.finding + x.handler).toLowerCase().includes(keyword));
+      var state = window.safetyPageState, totalCount = list.length;
+      var paged = list.slice((state.currentPage - 1) * state.pageSize, state.currentPage * state.pageSize);
+      const headers = ['ID', '日期', '时间', '巡查类别', '发现问题', '级别', '整改人', '状态', '操作'];
+      const rows = paged.map(s => {
+        const levelTag = s.level === '高' ? '<span class="tag tag-red">高</span>' : s.level === '中' ? '<span class="tag tag-orange">中</span>' : '<span class="tag tag-blue">低</span>';
+        const statusTag = s.status === '已整改' ? '<span class="tag tag-green">已整改</span>' : s.status === '已复核' ? '<span class="tag tag-blue">已复核</span>' : '<span class="tag tag-red">待整改</span>';
+        return [s.id, s.date, s.time, s.category, s.finding, levelTag, s.handler, statusTag,
+          `<button class="btn btn-sm btn-default" onclick="showSafetyDetail(${s.id})">详情</button>` +
+          ` <button class="btn btn-sm btn-primary" onclick="editSafety(${s.id})">编辑</button>` +
+          ` <button class="btn btn-sm btn-danger" onclick="deleteSafety(${s.id})">删除</button>`];
+      });
+      document.getElementById('safetyTableBody').innerHTML = renderTable(headers, rows) + renderPaginationBar(state, 'goToSafetyPage', totalCount);
+    };
+    const __editingSafetyId = { val: null };
+    window.openSafetyModal = function() {
+      __editingSafetyId.val = null;
+      openModal('新增食安巡查', `
+        <div class="form-row">
+          <div class="form-col"><label class="form-label">巡查日期<span class="required">*</span></label><input class="form-input" type="date" id="sDate" value="${new Date().toISOString().slice(0,10)}"></div>
+          <div class="form-col"><label class="form-label">巡查时间<span class="required">*</span></label><input class="form-input" type="time" id="sTime" value="09:00"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-col"><label class="form-label">巡查类别<span class="required">*</span></label><select class="form-select" id="sCategory"><option>环境卫生</option><option>加工操作</option><option>人员卫生</option><option>设施设备</option></select></div>
+          <div class="form-col"><label class="form-label">级别</label><select class="form-select" id="sLevel"><option>高</option><option>中</option><option>低</option></select></div>
+        </div>
+        <div class="form-row">
+          <div class="form-col"><label class="form-label">整改人<span class="required">*</span></label><input class="form-input" id="sHandler" placeholder="整改负责人"></div>
+          <div class="form-col"><label class="form-label">状态</label><select class="form-select" id="sStatus"><option>待整改</option><option>已整改</option><option>已复核</option></select></div>
+        </div>
+        <div class="form-row">
+          <div class="form-col" style="flex:1"><label class="form-label">发现问题<span class="required">*</span></label><input class="form-input" id="sFinding" placeholder="巡查发现的问题"></div>
+        </div>
+      `, '<button class="btn btn-default" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveSafety()">保存</button>');
+    };
+    window.editSafety = function(id) {
+      const s = DB.safetyInspects.find(x => x.id === id); if (!s) return;
+      __editingSafetyId.val = id;
+      openModal('编辑食安巡查', `
+        <div class="form-row">
+          <div class="form-col"><label class="form-label">巡查日期<span class="required">*</span></label><input class="form-input" type="date" id="sDate" value="${s.date}"></div>
+          <div class="form-col"><label class="form-label">巡查时间<span class="required">*</span></label><input class="form-input" type="time" id="sTime" value="${s.time}"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-col"><label class="form-label">巡查类别<span class="required">*</span></label><select class="form-select" id="sCategory"><option ${s.category === '环境卫生' ? 'selected' : ''}>环境卫生</option><option ${s.category === '加工操作' ? 'selected' : ''}>加工操作</option><option ${s.category === '人员卫生' ? 'selected' : ''}>人员卫生</option><option ${s.category === '设施设备' ? 'selected' : ''}>设施设备</option></select></div>
+          <div class="form-col"><label class="form-label">级别</label><select class="form-select" id="sLevel"><option ${s.level === '高' ? 'selected' : ''}>高</option><option ${s.level === '中' ? 'selected' : ''}>中</option><option ${s.level === '低' ? 'selected' : ''}>低</option></select></div>
+        </div>
+        <div class="form-row">
+          <div class="form-col"><label class="form-label">整改人<span class="required">*</span></label><input class="form-input" id="sHandler" value="${s.handler}"></div>
+          <div class="form-col"><label class="form-label">状态</label><select class="form-select" id="sStatus"><option ${s.status === '待整改' ? 'selected' : ''}>待整改</option><option ${s.status === '已整改' ? 'selected' : ''}>已整改</option><option ${s.status === '已复核' ? 'selected' : ''}>已复核</option></select></div>
+        </div>
+        <div class="form-row">
+          <div class="form-col" style="flex:1"><label class="form-label">发现问题<span class="required">*</span></label><input class="form-input" id="sFinding" value="${s.finding}"></div>
+        </div>
+      `, '<button class="btn btn-default" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveSafety()">保存</button>');
+    };
+    window.showSafetyDetail = function(id) {
+      const s = DB.safetyInspects.find(x => x.id === id); if (!s) return;
+      const canteen = DB.canteens.find(c => c.id === s.canteenId);
+      openModal('食安巡查详情', `
+        <div class="detail-list">
+          <div class="detail-item"><div class="label">所属食堂</div><div class="value">${canteen ? canteen.name : '-'}</div></div>
+          <div class="detail-item"><div class="label">巡查日期</div><div class="value">${s.date}</div></div>
+          <div class="detail-item"><div class="label">巡查时间</div><div class="value">${s.time}</div></div>
+          <div class="detail-item"><div class="label">巡查类别</div><div class="value">${s.category}</div></div>
+          <div class="detail-item"><div class="label">级别</div><div class="value">${s.level}</div></div>
+          <div class="detail-item"><div class="label">整改人</div><div class="value">${s.handler}</div></div>
+          <div class="detail-item" style="grid-column:span 2"><div class="label">发现问题</div><div class="value">${s.finding}</div></div>
+          <div class="detail-item"><div class="label">状态</div><div class="value">${s.status}</div></div>
+        </div>`, '<button class="btn btn-default" onclick="closeModal()">关闭</button>');
+    };
+    window.deleteSafety = function(id) {
+      showConfirm('确认删除该巡查记录？此操作不可撤销。', {
+        onConfirm: () => {
+          const idx = DB.safetyInspects.findIndex(x => x.id === id);
+          if (idx > -1) { DB.safetyInspects.splice(idx, 1); DataStore.set('safetyInspects', DB.safetyInspects); }
+          showToast('已删除', 'success'); renderSafetyInspect(document.getElementById('content'));
+        }
+      });
+    };
+    window.saveSafety = function() {
+      const date = document.getElementById('sDate').value;
+      const time = document.getElementById('sTime').value;
+      const category = document.getElementById('sCategory').value;
+      const finding = document.getElementById('sFinding').value.trim();
+      const handler = document.getElementById('sHandler').value.trim();
+      if (!date || !time || !finding || !handler) { showToast('请填写必填项', 'warning'); return; }
+      const data = {
+        date, time, category, finding, handler,
+        level: document.getElementById('sLevel').value,
+        status: document.getElementById('sStatus').value
+      };
+      if (__editingSafetyId.val) {
+        Object.assign(DB.safetyInspects.find(x => x.id === __editingSafetyId.val), data);
+      } else {
+        data.id = Math.max(0, ...DB.safetyInspects.map(x => x.id)) + 1;
+        data.canteenId = currentUser.canteenId || 1;
+        DB.safetyInspects.push(data);
+      }
+      DataStore.set('safetyInspects', DB.safetyInspects); closeModal();
+      showToast('保存成功', 'success'); renderSafetyInspect(document.getElementById('content'));
+    };
+
+    // ===== 菜谱维护 =====
+    function renderRecipes(el) {
+      setBreadcrumb(['首页', '菜谱信息维护']);
+      let list = currentUser.canteenId ? DB.recipes.filter(x => x.canteenId === currentUser.canteenId) : DB.recipes;
+      window.recipePageState = window.recipePageState || { currentPage: 1, pageSize: 10 };
+      var state = window.recipePageState;
+      var totalCount = list.length;
+      var paged = list.slice((state.currentPage - 1) * state.pageSize, state.currentPage * state.pageSize);
+      const headers = ['ID', '餐次', '星期', '菜品名称', '类别', '价格', '状态', '操作'];
+      const rows = paged.map(r => {
+        const statusTag = r.status === '启用' ? '<span class="tag tag-green">启用</span>' : '<span class="tag tag-gray">停用</span>';
+        return [r.id, r.mealType, r.date, r.dishName, r.category, '¥' + r.price, statusTag,
+          `<button class="btn btn-sm btn-default" onclick="showRecipeDetail(${r.id})">详情</button>` +
+          ` <button class="btn btn-sm btn-primary" onclick="editRecipe(${r.id})">编辑</button>` +
+          ` <button class="btn btn-sm btn-danger" onclick="deleteRecipe(${r.id})">删除</button>`];
+      });
+      el.innerHTML = `
+        <div class="filter-bar">
+          <select id="recipeMealFilter" onchange="filterRecipeList()"><option value="">全部餐次</option><option>早餐</option><option>午餐</option><option>晚餐</option></select>
+          <select id="recipeCategoryFilter" onchange="filterRecipeList()"><option value="">全部类别</option><option>荤菜</option><option>素菜</option><option>汤品</option><option>主食</option></select>
+          <input type="text" id="recipeSearchInput" placeholder="搜索菜品名称" oninput="filterRecipeList()">
+          <button class="btn btn-primary" onclick="openRecipeModal()">+ 新增菜品</button>
+        </div>
+        <div class="card"><div class="card-body" id="recipeTableBody">
+          ${renderTable(headers, rows)}
+          ${renderPaginationBar(state, 'goToRecipePage', totalCount)}
+        </div></div>`;
+    }
+    window.goToRecipePage = function(page) { window.recipePageState.currentPage = page; renderRecipes(document.getElementById('content')); };
+    window.filterRecipeList = function() {
+      window.recipePageState = window.recipePageState || { currentPage: 1, pageSize: 10 };
+      window.recipePageState.currentPage = 1;
+      const mealFilter = document.getElementById('recipeMealFilter').value;
+      const categoryFilter = document.getElementById('recipeCategoryFilter').value;
+      const keyword = (document.getElementById('recipeSearchInput').value || '').trim().toLowerCase();
+      let list = currentUser.canteenId ? DB.recipes.filter(x => x.canteenId === currentUser.canteenId) : DB.recipes;
+      if (mealFilter) list = list.filter(x => x.mealType === mealFilter);
+      if (categoryFilter) list = list.filter(x => x.category === categoryFilter);
+      if (keyword) list = list.filter(x => x.dishName.toLowerCase().includes(keyword));
+      var state = window.recipePageState, totalCount = list.length;
+      var paged = list.slice((state.currentPage - 1) * state.pageSize, state.currentPage * state.pageSize);
+      const headers = ['ID', '餐次', '星期', '菜品名称', '类别', '价格', '状态', '操作'];
+      const rows = paged.map(r => {
+        const statusTag = r.status === '启用' ? '<span class="tag tag-green">启用</span>' : '<span class="tag tag-gray">停用</span>';
+        return [r.id, r.mealType, r.date, r.dishName, r.category, '¥' + r.price, statusTag,
+          `<button class="btn btn-sm btn-default" onclick="showRecipeDetail(${r.id})">详情</button>` +
+          ` <button class="btn btn-sm btn-primary" onclick="editRecipe(${r.id})">编辑</button>` +
+          ` <button class="btn btn-sm btn-danger" onclick="deleteRecipe(${r.id})">删除</button>`];
+      });
+      document.getElementById('recipeTableBody').innerHTML = renderTable(headers, rows) + renderPaginationBar(state, 'goToRecipePage', totalCount);
+    };
+    const __editingRecipeId = { val: null };
+    window.openRecipeModal = function() {
+      __editingRecipeId.val = null;
+      openModal('新增菜品', `
+        <div class="form-row">
+          <div class="form-col"><label class="form-label">餐次<span class="required">*</span></label><select class="form-select" id="rMeal"><option>早餐</option><option>午餐</option><option>晚餐</option></select></div>
+          <div class="form-col"><label class="form-label">星期<span class="required">*</span></label><input class="form-input" id="rDate" value="周一"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-col"><label class="form-label">菜品名称<span class="required">*</span></label><input class="form-input" id="rDish" placeholder="如：红烧肉"></div>
+          <div class="form-col"><label class="form-label">类别</label><select class="form-select" id="rCategory"><option>荤菜</option><option>素菜</option><option>汤品</option><option>主食</option></select></div>
+        </div>
+        <div class="form-row">
+          <div class="form-col"><label class="form-label">价格(元)<span class="required">*</span></label><input class="form-input" id="rPrice" placeholder="如：10.0"></div>
+          <div class="form-col"><label class="form-label">状态</label><select class="form-select" id="rStatus"><option>启用</option><option>停用</option></select></div>
+        </div>
+      `, '<button class="btn btn-default" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveRecipe()">保存</button>');
+    };
+    window.editRecipe = function(id) {
+      const r = DB.recipes.find(x => x.id === id); if (!r) return;
+      __editingRecipeId.val = id;
+      openModal('编辑菜品', `
+        <div class="form-row">
+          <div class="form-col"><label class="form-label">餐次<span class="required">*</span></label><select class="form-select" id="rMeal"><option ${r.mealType === '早餐' ? 'selected' : ''}>早餐</option><option ${r.mealType === '午餐' ? 'selected' : ''}>午餐</option><option ${r.mealType === '晚餐' ? 'selected' : ''}>晚餐</option></select></div>
+          <div class="form-col"><label class="form-label">星期<span class="required">*</span></label><input class="form-input" id="rDate" value="${r.date}"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-col"><label class="form-label">菜品名称<span class="required">*</span></label><input class="form-input" id="rDish" value="${r.dishName}"></div>
+          <div class="form-col"><label class="form-label">类别</label><select class="form-select" id="rCategory"><option ${r.category === '荤菜' ? 'selected' : ''}>荤菜</option><option ${r.category === '素菜' ? 'selected' : ''}>素菜</option><option ${r.category === '汤品' ? 'selected' : ''}>汤品</option><option ${r.category === '主食' ? 'selected' : ''}>主食</option></select></div>
+        </div>
+        <div class="form-row">
+          <div class="form-col"><label class="form-label">价格(元)<span class="required">*</span></label><input class="form-input" id="rPrice" value="${r.price}"></div>
+          <div class="form-col"><label class="form-label">状态</label><select class="form-select" id="rStatus"><option ${r.status === '启用' ? 'selected' : ''}>启用</option><option ${r.status === '停用' ? 'selected' : ''}>停用</option></select></div>
+        </div>
+      `, '<button class="btn btn-default" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveRecipe()">保存</button>');
+    };
+    window.showRecipeDetail = function(id) {
+      const r = DB.recipes.find(x => x.id === id); if (!r) return;
+      const canteen = DB.canteens.find(c => c.id === r.canteenId);
+      openModal('菜品详情', `
+        <div class="detail-list">
+          <div class="detail-item"><div class="label">所属食堂</div><div class="value">${canteen ? canteen.name : '-'}</div></div>
+          <div class="detail-item"><div class="label">餐次</div><div class="value">${r.mealType}</div></div>
+          <div class="detail-item"><div class="label">星期</div><div class="value">${r.date}</div></div>
+          <div class="detail-item"><div class="label">菜品名称</div><div class="value">${r.dishName}</div></div>
+          <div class="detail-item"><div class="label">类别</div><div class="value">${r.category}</div></div>
+          <div class="detail-item"><div class="label">价格</div><div class="value">¥${r.price}</div></div>
+          <div class="detail-item"><div class="label">状态</div><div class="value">${r.status}</div></div>
+        </div>`, '<button class="btn btn-default" onclick="closeModal()">关闭</button>');
+    };
+    window.deleteRecipe = function(id) {
+      showConfirm('确认删除该菜品？此操作不可撤销。', {
+        onConfirm: () => {
+          const idx = DB.recipes.findIndex(x => x.id === id);
+          if (idx > -1) { DB.recipes.splice(idx, 1); DataStore.set('recipes', DB.recipes); }
+          showToast('已删除', 'success'); renderRecipes(document.getElementById('content'));
+        }
+      });
+    };
+    window.saveRecipe = function() {
+      const mealType = document.getElementById('rMeal').value;
+      const date = document.getElementById('rDate').value.trim();
+      const dishName = document.getElementById('rDish').value.trim();
+      const price = document.getElementById('rPrice').value.trim();
+      if (!date || !dishName || !price) { showToast('请填写必填项', 'warning'); return; }
+      const data = {
+        mealType, date, dishName, price,
+        category: document.getElementById('rCategory').value,
+        status: document.getElementById('rStatus').value
+      };
+      if (__editingRecipeId.val) {
+        Object.assign(DB.recipes.find(x => x.id === __editingRecipeId.val), data);
+      } else {
+        data.id = Math.max(0, ...DB.recipes.map(x => x.id)) + 1;
+        data.canteenId = currentUser.canteenId || 1;
+        DB.recipes.push(data);
+      }
+      DataStore.set('recipes', DB.recipes); closeModal();
+      showToast('保存成功', 'success'); renderRecipes(document.getElementById('content'));
     };
 
     // ===== 视频监控 =====
