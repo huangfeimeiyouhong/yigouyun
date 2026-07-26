@@ -1645,13 +1645,14 @@
       var state = window.persPageState;
       var totalCount = list.length;
       var paged = list.slice((state.currentPage - 1) * state.pageSize, state.currentPage * state.pageSize);
-      var headers = ['照片', '员工编号', '姓名', '所属食堂', '岗位', '联系电话', '健康证状态', '健康证到期日', '入职日期', '状态', '操作'];
+      var headers = ['<input type="checkbox" id="persSelectAll" onchange="togglePersAll(this)" title="全选/取消全选">', '照片', '员工编号', '姓名', '所属食堂', '岗位', '联系电话', '健康证状态', '健康证到期日', '入职日期', '状态', '操作'];
       var rows = paged.map(function(p) {
         var canteen = DB.canteens.find(c => c.id === p.canteenId);
         var healthTag = p.healthStatus === '有效' ? '<span class="tag tag-green">有效</span>' : p.healthStatus === '即将过期' ? '<span class="tag tag-orange">即将过期</span>' : '<span class="tag tag-red">已过期</span>';
         var statusTag = p.status ? '<span class="tag tag-green">在职</span>' : '<span class="tag tag-gray">离职</span>';
         var photoHtml = p.facePhoto ? '<img class="face-thumb" src="' + p.facePhoto + '" alt="face">' : '<span class="face-placeholder">' + p.name.charAt(0) + '</span>';
         return [
+          '<input type="checkbox" class="pers-cb" data-id="' + p.id + '">',
           photoHtml, p.empNo, p.name, canteen ? canteen.name : '-', p.position, p.phone, healthTag, p.healthExpire, p.entryDate, statusTag,
           '<button class="btn btn-sm btn-default" onclick="showPersonDetail(' + p.id + ')">详情</button>' +
           (currentUser.role !== 'staff' ? ' <button class="btn btn-sm btn-primary" onclick="editPerson(' + p.id + ')">编辑</button> <button class="btn btn-sm btn-danger" onclick="deletePerson(' + p.id + ')">删除</button>' : '')
@@ -1665,6 +1666,7 @@
           <input type="text" id="persSearchInput" placeholder="搜索姓名/编号/电话" oninput="filterPersonList()">
           ${currentUser.role !== 'staff' ? '<button class="btn btn-primary" onclick="openPersonModal()">+ 新增人员</button>' : ''}
           ${currentUser.role !== 'staff' ? '<button class="btn btn-default" onclick="showToast(\'批量导入功能开发中\', \'info\')">批量导入</button>' : ''}
+          ${currentUser.role !== 'staff' ? '<button class="btn btn-danger" onclick="batchDeletePersons()">批量删除</button>' : ''}
         </div>
         <div class="card">
           <div class="card-body" id="persTableBody">
@@ -1692,7 +1694,7 @@
       var state = window.persPageState;
       var totalCount = list.length;
       var paged = list.slice((state.currentPage - 1) * state.pageSize, state.currentPage * state.pageSize);
-      var headers = ['照片', '员工编号', '姓名', '所属食堂', '岗位', '联系电话', '健康证状态', '健康证到期日', '入职日期', '状态', '操作'];
+      var headers = ['<input type="checkbox" id="persSelectAll" onchange="togglePersAll(this)" title="全选/取消全选">', '照片', '员工编号', '姓名', '所属食堂', '岗位', '联系电话', '健康证状态', '健康证到期日', '入职日期', '状态', '操作'];
       var rows = paged.map(function(p) {
         var canteen = DB.canteens.find(c => c.id === p.canteenId);
         var healthTag = p.healthStatus === '有效' ? '<span class="tag tag-green">有效</span>' : p.healthStatus === '即将过期' ? '<span class="tag tag-orange">即将过期</span>' : '<span class="tag tag-red">已过期</span>';
@@ -1766,6 +1768,20 @@
       const idx = DB.personnel.findIndex(p => p.id === id);
       if (idx > -1) { DB.personnel.splice(idx, 1); DataStore.set('personnel', DB.personnel); }
       showToast('已删除', 'success');
+      renderPersonnel(document.getElementById('content'));
+    };
+
+    window.togglePersAll = function(cb) {
+      document.querySelectorAll('.pers-cb').forEach(el => el.checked = cb.checked);
+    };
+    window.batchDeletePersons = async function() {
+      const checked = Array.from(document.querySelectorAll('.pers-cb:checked')).map(el => el.dataset.id);
+      if (!checked.length) { showToast('请先勾选要删除的人员', 'warning'); return; }
+      if (!await showConfirm('确认批量删除选中的 ' + checked.length + ' 名人员？此操作不可撤销。', { title: '批量删除', type: 'danger', danger: true })) return;
+      const ids = new Set(checked);
+      DB.personnel = DB.personnel.filter(p => !ids.has(String(p.id)));
+      DataStore.set('personnel', DB.personnel);
+      showToast('已删除 ' + checked.length + ' 条记录', 'success');
       renderPersonnel(document.getElementById('content'));
     };
 
