@@ -718,7 +718,6 @@
       { key: 'patrol', label: '巡检记录', icon: '&#128269;', group: '业务' },
       { key: 'safetyInspect', label: '食安巡查', icon: '&#128737;', group: '业务' },
       { key: 'recipes', label: '菜谱信息维护', icon: '&#127869;', group: '业务' },
-      { key: 'users', label: '各食堂用户管理', icon: '&#128100;', group: '管理' },
       { key: 'roles', label: '角色管理', icon: '&#128101;', group: '管理' },
       { key: 'userMgmt', label: '用户管理', icon: '&#128101;', group: '管理' },
       { key: 'sysParams', label: '参数设置', icon: '&#9881;', group: '管理' },
@@ -730,8 +729,8 @@
       var cfg = {};
       // 默认权限映射（兜底：当角色缺少 permissions 字段时使用）
       var DEFAULT_PERMS = {
-        admin: ['dashboard','devices','alerts','alertReview','samples','personnel','checks','access','monitor','roles','userMgmt','sysParams','ledger','patrol','safetyInspect','recipes','users','patrolReview'],
-        canteenAdmin: ['dashboard','users','roles','alertReview','patrolReview'],
+        admin: ['dashboard','devices','alerts','alertReview','samples','personnel','checks','access','monitor','roles','userMgmt','sysParams','ledger','patrol','safetyInspect','recipes','patrolReview'],
+        canteenAdmin: ['dashboard','userMgmt','roles','alertReview','patrolReview'],
         staff: ['samples','ledger','patrol','safetyInspect','recipes'],
         inspector: ['dataView','monitor']
       };
@@ -925,7 +924,6 @@
         case 'monitor': renderMonitor(content); break;
         case 'dataView': renderDataView(content); break;
         case 'roles': renderRoles(content); break;
-        case 'users': renderUsers(content); break;
         case 'patrolReview': renderPatrolReview(content); break;
         case 'system': renderSystem(content); break;
         case 'userMgmt': renderUserMgmt(content); break;
@@ -3670,36 +3668,7 @@
         showToast('用户已创建，默认密码：123456', 'success');
       }
       closeModal();
-      if (currentPage === 'users') renderUsers(document.getElementById('content'));
-      else renderUserMgmt(document.getElementById('content'));
-    };
-
-    // ===== 各食堂用户管理（食堂管理员） =====
-    function renderUsers(el) {
-      setBreadcrumb(['首页', '各食堂用户管理']);
-      window.userPageState = window.userPageState || { currentPage: 1, pageSize: 10 };
-      var state = window.userPageState;
-      var list = DB.users;
-      var totalCount = list.length;
-      var paged = list.slice((state.currentPage - 1) * state.pageSize, state.currentPage * state.pageSize);
-      el.innerHTML = `
-        <div class="card">
-          <div class="card-header"><div class="card-title">各食堂用户管理</div><button class="btn btn-sm btn-primary" onclick="openUserModal()">+ 新增用户</button></div>
-          <div class="card-body" id="userTableBody">
-            ${renderTable(['ID', '账号', '姓名', '角色', '所属食堂', '电话', '最后登录', '状态', '操作'],
-              paged.map(u => {
-                const canteen = DB.canteens.find(c => c.id === u.canteenId);
-                const roleTag = u.role === 'admin' ? '<span class="tag tag-red">平台管理员</span>' : u.role === 'canteenAdmin' ? '<span class="tag tag-blue">食堂管理员</span>' : u.role === 'staff' ? '<span class="tag tag-green">从业人员</span>' : '<span class="tag tag-orange">监管用户</span>';
-                const statusTag = u.status ? '<span class="tag tag-green">正常</span>' : '<span class="tag tag-gray">禁用</span>';
-                return [u.id, u.username, u.realName, roleTag, canteen ? canteen.name : '-', u.phone, u.lastLogin, statusTag, '<button class="btn btn-sm btn-default" onclick="editUser(' + u.id + ')">编辑</button>'];
-              }))}
-            ${renderPaginationBar(state, 'goToUserPage', totalCount)}
-          </div>
-        </div>`;
-    }
-    window.goToUserPage = function(page) {
-      window.userPageState.currentPage = page;
-      renderUsers(document.getElementById('content'));
+      renderUserMgmt(document.getElementById('content'));
     };
 
     // ===================== 启动 =====================
