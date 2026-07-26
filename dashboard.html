@@ -728,8 +728,15 @@
     // 根据 DB.roles 中的 permissions 动态构建角色菜单配置
     function buildRoleConfig() {
       var cfg = {};
+      // 默认权限映射（兜底：当角色缺少 permissions 字段时使用）
+      var DEFAULT_PERMS = {
+        admin: ['dashboard','devices','alerts','alertReview','samples','personnel','checks','access','monitor','roles','system','ledger','patrol','safetyInspect','recipes','dataView','users','patrolReview'],
+        canteenAdmin: ['dashboard','users','roles','alertReview','patrolReview'],
+        staff: ['samples','ledger','patrol','safetyInspect','recipes'],
+        inspector: ['dataView','monitor']
+      };
       DB.roles.forEach(function(r) {
-        var perms = r.permissions || [];
+        var perms = (r.permissions && r.permissions.length > 0) ? r.permissions : (DEFAULT_PERMS[r.code] || []);
         cfg[r.code] = { name: r.name, menus: ALL_MENUS.filter(function(m) { return perms.indexOf(m.key) !== -1; }) };
       });
       // 兜底：如果某角色 code 没有匹配到，给一个默认空菜单

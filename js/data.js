@@ -239,10 +239,11 @@ const DataStore = {
     if (!this.get('sysParams')) {
       this.set('sysParams', MOCK_DATA.sysParams);
     }
-    // 数据版本迁移：确保预警数据包含待审核记录
-    const DATA_VERSION = '2026-07-26';
+    // 数据版本迁移：确保预警数据包含待审核记录，角色数据包含权限
+    const DATA_VERSION = '2026-07-26-v2';
     if (this.get('dataVersion') !== DATA_VERSION) {
       this.set('alerts', MOCK_DATA.alerts);
+      this.set('roles', MOCK_DATA.roles);
       this.set('dataVersion', DATA_VERSION);
     }
   },
