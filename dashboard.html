@@ -708,6 +708,7 @@
         { key: 'dashboard', label: '工作台', icon: '&#128202;' },
         { key: 'devices', label: '物联设备', icon: '&#128268;' },
         { key: 'alerts', label: '异常预警', icon: '&#128680;' },
+        { key: 'alertReview', label: '预警审核', icon: '&#9989;' },
         { key: 'samples', label: '留样管理', icon: '&#129379;' },
         { key: 'personnel', label: '人员管理', icon: '&#128100;' },
         { key: 'checks', label: '晨午晚检', icon: '&#129658;' },
@@ -720,6 +721,7 @@
         { key: 'dashboard', label: '工作台', icon: '&#128202;' },
         { key: 'devices', label: '物联设备', icon: '&#128268;' },
         { key: 'alerts', label: '异常预警', icon: '&#128680;' },
+        { key: 'alertReview', label: '预警审核', icon: '&#9989;' },
         { key: 'samples', label: '留样管理', icon: '&#129379;' },
         { key: 'personnel', label: '人员管理', icon: '&#128100;' },
         { key: 'checks', label: '晨午晚检', icon: '&#129658;' },
@@ -904,6 +906,7 @@
         case 'dashboard': renderDashboard(content); break;
         case 'devices': renderDevices(content); break;
         case 'alerts': renderAlerts(content); break;
+        case 'alertReview': renderAlertReview(content); break;
         case 'samples': renderSamples(content); break;
         case 'personnel': renderPersonnel(content); break;
         case 'checks': renderChecks(content); break;
@@ -955,7 +958,7 @@
             <div class="stat-icon red">&#128680;</div>
             <div class="stat-info">
               <div class="stat-num">${alertCount}</div>
-              <div class="stat-label">待处理预警</div>
+              <div class="stat-label">待审核预警</div>
               <div class="stat-trend">今日新增 ${alertCount} 条</div>
             </div>
           </div>
@@ -1014,7 +1017,7 @@
     function renderAlertsPreview() {
       let list = currentUser.canteenId ? DB.alerts.filter(a => a.canteenId === currentUser.canteenId) : DB.alerts;
       list = list.filter(a => a.status === 'pending').slice(0, 5);
-      if (list.length === 0) return '<div style="text-align:center;padding:20px;color:#999;font-size:13px">暂无待处理预警</div>';
+      if (list.length === 0) return '<div style="text-align:center;padding:20px;color:#999;font-size:13px">暂无待审核预警</div>';
       return list.map(a => {
         const levelClass = a.level === 'high' ? 'tag-red' : a.level === 'medium' ? 'tag-orange' : 'tag-blue';
         const levelText = a.level === 'high' ? '高' : a.level === 'medium' ? '中' : '低';
@@ -1024,7 +1027,7 @@
             <span style="margin-left:8px;font-size:13px">${a.type}</span>
             <div style="font-size:12px;color:#999;margin-top:4px">${a.location} · ${a.time}</div>
           </div>
-          <span class="tag tag-red">待处理</span>
+          <span class="tag tag-red">待审核</span>
         </div>`;
       }).join('');
     }
@@ -1281,16 +1284,16 @@
       var state = window.alertPageState;
       var totalCount = list.length;
       var paged = list.slice((state.currentPage - 1) * state.pageSize, state.currentPage * state.pageSize);
-      const headers = ['编号', '预警类型', '级别', '食堂', '位置', '发生时间', '状态', '处理人', '操作'];
+      const headers = ['编号', '预警类型', '级别', '食堂', '位置', '发生时间', '状态', '审核人', '操作'];
       const rows = paged.map(a => {
         const canteen = DB.canteens.find(c => c.id === a.canteenId);
         const levelTag = a.level === 'high' ? '<span class="tag tag-red">高</span>' : a.level === 'medium' ? '<span class="tag tag-orange">中</span>' : '<span class="tag tag-blue">低</span>';
-        const statusTag = a.status === 'pending' ? '<span class="tag tag-red">待处理</span>' : '<span class="tag tag-green">已处理</span>';
+        const statusTag = a.status === 'pending' ? '<span class="tag tag-red">待审核</span>' : '<span class="tag tag-green">已审核</span>';
         return [
           a.id, a.type, levelTag, canteen ? canteen.name : '-', a.location, a.time, statusTag,
           a.handler || '-',
           `<button class="btn btn-sm btn-default" onclick="showAlertDetail(${a.id})">详情</button>` +
-          (a.status === 'pending' ? ` <button class="btn btn-sm btn-success" onclick="handleAlert(${a.id})">处理</button>` : '')
+          (a.status === 'pending' ? ` <button class="btn btn-sm btn-success" onclick="openReviewModal(${a.id})">审核</button>` : '')
         ];
       });
 
@@ -1298,8 +1301,8 @@
         <div class="filter-bar">
           <select id="alertStatusFilter" onchange="filterAlertList()">
             <option value="">全部状态</option>
-            <option value="pending">待处理</option>
-            <option value="handled">已处理</option>
+            <option value="pending">待审核</option>
+            <option value="handled">已审核</option>
           </select>
           <select id="alertLevelFilter" onchange="filterAlertList()">
             <option value="">全部级别</option>
@@ -1336,15 +1339,15 @@
       var state = window.alertPageState;
       var totalCount = list.length;
       var paged = list.slice((state.currentPage - 1) * state.pageSize, state.currentPage * state.pageSize);
-      const headers = ['编号', '预警类型', '级别', '食堂', '位置', '发生时间', '状态', '处理人', '操作'];
+      const headers = ['编号', '预警类型', '级别', '食堂', '位置', '发生时间', '状态', '审核人', '操作'];
       const rows = paged.map(a => {
         const canteen = DB.canteens.find(c => c.id === a.canteenId);
         const levelTag = a.level === 'high' ? '<span class="tag tag-red">高</span>' : a.level === 'medium' ? '<span class="tag tag-orange">中</span>' : '<span class="tag tag-blue">低</span>';
-        const statusTag = a.status === 'pending' ? '<span class="tag tag-red">待处理</span>' : '<span class="tag tag-green">已处理</span>';
+        const statusTag = a.status === 'pending' ? '<span class="tag tag-red">待审核</span>' : '<span class="tag tag-green">已审核</span>';
         return [a.id, a.type, levelTag, canteen ? canteen.name : '-', a.location, a.time, statusTag,
           a.handler || '-',
           `<button class="btn btn-sm btn-default" onclick="showAlertDetail(${a.id})">详情</button>` +
-          (a.status === 'pending' ? ` <button class="btn btn-sm btn-success" onclick="handleAlert(${a.id})">处理</button>` : '')];
+          (a.status === 'pending' ? ` <button class="btn btn-sm btn-success" onclick="openReviewModal(${a.id})">审核</button>` : '')];
       });
       document.getElementById('alertTableBody').innerHTML = renderTable(headers, rows) + renderPaginationBar(state, 'goToAlertPage', totalCount);
     };
@@ -1362,24 +1365,89 @@
           <div class="detail-item"><div class="label">发生位置</div><div class="value">${a.location}</div></div>
           <div class="detail-item"><div class="label">发生时间</div><div class="value">${a.time}</div></div>
           <div class="detail-item"><div class="label">检测设备</div><div class="value">${a.deviceId}</div></div>
-          <div class="detail-item"><div class="label">处理状态</div><div class="value">${a.status === 'pending' ? '待处理' : '已处理'}</div></div>
-          <div class="detail-item"><div class="label">处理人</div><div class="value">${a.handler || '-'}</div></div>
-          <div class="detail-item"><div class="label">处理时间</div><div class="value">${a.handleTime || '-'}</div></div>
+          <div class="detail-item"><div class="label">审核状态</div><div class="value">${a.status === 'pending' ? '待审核' : '已审核'}</div></div>
+          <div class="detail-item"><div class="label">审核人</div><div class="value">${a.handler || '-'}</div></div>
+          <div class="detail-item"><div class="label">审核时间</div><div class="value">${a.handleTime || '-'}</div></div>
+          <div class="detail-item"><div class="label">审核结果</div><div class="value">${a.reviewResult || '-'}</div></div>
+          <div class="detail-item" style="grid-column:span 2"><div class="label">审核意见</div><div class="value">${a.reviewComment || '-'}</div></div>
           <div class="detail-item" style="grid-column:span 2"><div class="label">详细描述</div><div class="value">${a.description}</div></div>
         </div>
         ${a.image ? '<div style="margin-top:16px"><div class="label">现场截图</div><div style="width:100%;height:200px;background:#f5f5f5;display:flex;align-items:center;justify-content:center;color:#999;margin-top:8px;border-radius:4px">[预警截图占位]</div></div>' : ''}
       `, '<button class="btn btn-default" onclick="closeModal()">关闭</button>');
     };
 
-    window.handleAlert = function(id) {
+    // ===== 审核弹窗 =====
+    window.openReviewModal = function(id) {
       const a = DB.alerts.find(x => x.id === id);
       if (!a) return;
+      const canteen = DB.canteens.find(c => c.id === a.canteenId);
+      openModal('预警审核 - ' + a.type, `
+        <div class="detail-list" style="margin-bottom:16px">
+          <div class="detail-item"><div class="label">预警编号</div><div class="value">${a.id}</div></div>
+          <div class="detail-item"><div class="label">所属食堂</div><div class="value">${canteen ? canteen.name : '-'}</div></div>
+          <div class="detail-item"><div class="label">发生位置</div><div class="value">${a.location}</div></div>
+          <div class="detail-item"><div class="label">发生时间</div><div class="value">${a.time}</div></div>
+        </div>
+        <div class="form-group"><label>审核意见</label><textarea id="reviewComment" rows="3" placeholder="请填写审核意见（如属实、已整改、误报等）">${a.reviewComment || ''}</textarea></div>
+      `,
+      '<button class="btn btn-default" onclick="closeModal()">取消</button>' +
+      '<button class="btn btn-danger" onclick="reviewAlert(' + id + ', \'驳回\')">驳回</button>' +
+      '<button class="btn btn-success" onclick="reviewAlert(' + id + ', \'通过\')">通过</button>'
+      );
+    };
+
+    window.reviewAlert = function(id, result) {
+      const a = DB.alerts.find(x => x.id === id);
+      if (!a) return;
+      const comment = (document.getElementById('reviewComment') ? document.getElementById('reviewComment').value.trim() : '');
+      if (!comment) { showToast('请填写审核意见', 'warning'); return; }
       a.status = 'handled';
       a.handler = currentUser.realName;
       a.handleTime = new Date().toISOString().slice(0, 19).replace('T', ' ');
+      a.reviewResult = result;
+      a.reviewComment = comment;
       DataStore.set('alerts', DB.alerts);
-      showToast('已标记为已处理', 'success');
-      renderAlerts(document.getElementById('content'));
+      closeModal();
+      showToast('审核完成：' + result, 'success');
+      if (currentPage === 'alertReview') renderAlertReview(document.getElementById('content'));
+      else renderAlerts(document.getElementById('content'));
+    };
+
+    // ===== 预警审核页面 =====
+    function renderAlertReview(el) {
+      setBreadcrumb(['首页', '预警审核']);
+      let list = currentUser.canteenId ? DB.alerts.filter(a => a.canteenId === currentUser.canteenId) : DB.alerts;
+      list = list.filter(a => a.status === 'pending');
+      window.alertReviewPageState = window.alertReviewPageState || { currentPage: 1, pageSize: 10 };
+      var state = window.alertReviewPageState;
+      var totalCount = list.length;
+      var paged = list.slice((state.currentPage - 1) * state.pageSize, state.currentPage * state.pageSize);
+      const headers = ['编号', '预警类型', '级别', '食堂', '位置', '发生时间', '操作'];
+      const rows = paged.map(a => {
+        const canteen = DB.canteens.find(c => c.id === a.canteenId);
+        const levelTag = a.level === 'high' ? '<span class="tag tag-red">高</span>' : a.level === 'medium' ? '<span class="tag tag-orange">中</span>' : '<span class="tag tag-blue">低</span>';
+        return [
+          a.id, a.type, levelTag, canteen ? canteen.name : '-', a.location, a.time,
+          `<button class="btn btn-sm btn-default" onclick="showAlertDetail(${a.id})">详情</button> ` +
+          `<button class="btn btn-sm btn-success" onclick="openReviewModal(${a.id})">审核</button>`
+        ];
+      });
+      el.innerHTML = `
+        <div style="background:#fff7e6;border:1px solid #ffd591;border-radius:4px;padding:12px 16px;margin-bottom:16px;color:#ad6800;font-size:13px">
+          当前共有 <b>${totalCount}</b> 条待审核预警，请及时处理。
+        </div>
+        <div class="card">
+          <div class="card-body" id="alertReviewTableBody">
+            ${renderTable(headers, rows, '暂无待审核预警')}
+            ${renderPaginationBar(state, 'goToAlertReviewPage', totalCount)}
+          </div>
+        </div>
+      `;
+    }
+
+    window.goToAlertReviewPage = function(page) {
+      window.alertReviewPageState.currentPage = page;
+      renderAlertReview(document.getElementById('content'));
     };
 
     // ===== 留样管理 =====
@@ -2160,7 +2228,7 @@
           <div class="stat-card"><div class="stat-icon blue">&#127968;</div><div class="stat-info"><div class="stat-num">${DB.canteens.filter(c => c.status).length}</div><div class="stat-label">运营食堂</div></div></div>
           <div class="stat-card"><div class="stat-icon green">&#128100;</div><div class="stat-info"><div class="stat-num">${DB.personnel.filter(p => p.status).length}</div><div class="stat-label">从业人员</div></div></div>
           <div class="stat-card"><div class="stat-icon orange">&#128268;</div><div class="stat-info"><div class="stat-num">${DB.devices.filter(d => d.status === 'online').length}/${DB.devices.length}</div><div class="stat-label">设备在线/总数</div></div></div>
-          <div class="stat-card"><div class="stat-icon red">&#128680;</div><div class="stat-info"><div class="stat-num">${DB.alerts.filter(a => a.status === 'pending').length}</div><div class="stat-label">待处理预警</div></div></div>
+          <div class="stat-card"><div class="stat-icon red">&#128680;</div><div class="stat-info"><div class="stat-num">${DB.alerts.filter(a => a.status === 'pending').length}</div><div class="stat-label">待审核预警</div></div></div>
         </div>
         <div class="two-col">
           <div class="card">
@@ -2179,7 +2247,7 @@
           <div class="card">
             <div class="card-header"><div class="card-title">近7天预警统计</div></div>
             <div class="card-body">
-              ${renderTable(['预警类型', '发生次数', '已处理', '待处理'],
+              ${renderTable(['预警类型', '发生次数', '已审核', '待审核'],
                 Object.entries(DB.alerts.reduce((acc, a) => { acc[a.type] = (acc[a.type] || { total: 0, handled: 0, pending: 0 }); acc[a.type].total++; if (a.status === 'handled') acc[a.type].handled++; else acc[a.type].pending++; return acc; }, {}))
                   .map(([type, data]) => [type, data.total, data.handled, data.pending]))
               }
