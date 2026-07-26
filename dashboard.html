@@ -718,7 +718,6 @@
       { key: 'patrol', label: '巡检记录', icon: '&#128269;', group: '业务' },
       { key: 'safetyInspect', label: '食安巡查', icon: '&#128737;', group: '业务' },
       { key: 'recipes', label: '菜谱信息维护', icon: '&#127869;', group: '业务' },
-      { key: 'dataView', label: '查看食安数据', icon: '&#128200;', group: '监管' },
       { key: 'users', label: '各食堂用户管理', icon: '&#128100;', group: '管理' },
       { key: 'roles', label: '角色管理', icon: '&#128101;', group: '管理' },
       { key: 'system', label: '系统管理', icon: '&#9881;', group: '管理' },
@@ -730,7 +729,7 @@
       var cfg = {};
       // 默认权限映射（兜底：当角色缺少 permissions 字段时使用）
       var DEFAULT_PERMS = {
-        admin: ['dashboard','devices','alerts','alertReview','samples','personnel','checks','access','monitor','roles','system','ledger','patrol','safetyInspect','recipes','dataView','users','patrolReview'],
+        admin: ['dashboard','devices','alerts','alertReview','samples','personnel','checks','access','monitor','roles','system','ledger','patrol','safetyInspect','recipes','users','patrolReview'],
         canteenAdmin: ['dashboard','users','roles','alertReview','patrolReview'],
         staff: ['samples','ledger','patrol','safetyInspect','recipes'],
         inspector: ['dataView','monitor']
@@ -1090,6 +1089,7 @@
     // ===== 物联设备 =====
     function renderDevices(el) {
       setBreadcrumb(['首页', '物联设备管理']);
+      const isStaff = currentUser.role === 'staff';
       let list = currentUser.canteenId ? DB.devices.filter(d => d.canteenId === currentUser.canteenId) : DB.devices;
       window.devPageState = window.devPageState || { currentPage: 1, pageSize: 10 };
       var state = window.devPageState;
@@ -1111,8 +1111,7 @@
           d.id, d.name, d.type, canteen ? canteen.name : '-', d.location, statusStr,
           dataStr + '<br><span style="font-size:12px;color:#999">' + d.lastUpdate + '</span>',
           `<button class="btn btn-sm btn-default" onclick="showDeviceDetail('${d.id}')">详情</button>` +
-          ` <button class="btn btn-sm btn-primary" onclick="editDevice('${d.id}')">编辑</button>` +
-          ` <button class="btn btn-sm btn-danger" onclick="deleteDevice('${d.id}')">删除</button>`
+          (isStaff ? '' : ` <button class="btn btn-sm btn-primary" onclick="editDevice('${d.id}')">编辑</button> <button class="btn btn-sm btn-danger" onclick="deleteDevice('${d.id}')">删除</button>`)
         ];
       });
 
@@ -1132,7 +1131,7 @@
             <option value="warning">告警</option>
             <option value="offline">离线</option>
           </select>
-          <button class="btn btn-primary" onclick="openDeviceModal()">+ 添加设备</button>
+          ${isStaff ? '' : '<button class="btn btn-primary" onclick="openDeviceModal()">+ 添加设备</button>'}
         </div>
         <div class="card">
           <div class="card-body" id="devTableBody">
@@ -1150,6 +1149,7 @@
     window.filterDeviceList = function() {
       window.devPageState = window.devPageState || { currentPage: 1, pageSize: 10 };
       window.devPageState.currentPage = 1;
+      const isStaff = currentUser.role === 'staff';
       const keyword = (document.getElementById('devSearchInput').value || '').trim().toLowerCase();
       const typeFilter = document.getElementById('devTypeFilter').value;
       const statusFilter = document.getElementById('devStatusFilter').value;
@@ -1175,8 +1175,7 @@
         return [d.id, d.name, d.type, canteen ? canteen.name : '-', d.location, statusStr,
           dataStr + '<br><span style="font-size:12px;color:#999">' + d.lastUpdate + '</span>',
           `<button class="btn btn-sm btn-default" onclick="showDeviceDetail('${d.id}')">详情</button>` +
-          ` <button class="btn btn-sm btn-primary" onclick="editDevice('${d.id}')">编辑</button>` +
-          ` <button class="btn btn-sm btn-danger" onclick="deleteDevice('${d.id}')">删除</button>`];
+          (isStaff ? '' : ` <button class="btn btn-sm btn-primary" onclick="editDevice('${d.id}')">编辑</button> <button class="btn btn-sm btn-danger" onclick="deleteDevice('${d.id}')">删除</button>`)];
       });
       document.getElementById('devTableBody').innerHTML = renderTable(headers, rows) + renderPaginationBar(state, 'goToDevPage', totalCount);
     };

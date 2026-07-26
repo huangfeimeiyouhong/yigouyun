@@ -141,10 +141,10 @@ const MOCK_DATA = {
 
   // 角色管理
   roles: [
-    { id: 1, name: '平台管理员', code: 'admin', description: '系统全部权限，包括参数设置、用户管理、角色权限分配及业务管理等', status: 1, userCount: 1, createTime: '2024-01-01', permissions: ['dashboard','devices','alerts','alertReview','samples','personnel','checks','access','monitor','roles','system','ledger','patrol','safetyInspect','recipes','dataView'] },
+    { id: 1, name: '平台管理员', code: 'admin', description: '系统全部权限，包括参数设置、用户管理、角色权限分配及业务管理等', status: 1, userCount: 1, createTime: '2024-01-01', permissions: ['dashboard','devices','alerts','alertReview','samples','personnel','checks','access','monitor','roles','system','ledger','patrol','safetyInspect','recipes','users','patrolReview'] },
     { id: 2, name: '食堂管理员', code: 'canteenAdmin', description: '食堂运营管理权限，包括食堂用户管理、预警审核、巡查记录审核等', status: 1, userCount: 2, createTime: '2024-01-01', permissions: ['dashboard','users','roles','alertReview','patrolReview'] },
-    { id: 3, name: '从业人员', code: 'staff', description: '基础操作权限，包括留样填报、台账填报、巡检、安全巡查、菜谱维护等', status: 1, userCount: 3, createTime: '2024-01-01', permissions: ['samples','ledger','patrol','safetyInspect','recipes'] },
-    { id: 4, name: '监管用户', code: 'inspector', description: '食品安全数据查看权限，包括食安数据总览和视频监控查看', status: 1, userCount: 1, createTime: '2024-03-15', permissions: ['dataView','monitor'] }
+    { id: 3, name: '从业人员', code: 'staff', description: '可填报留样/台账/巡检/食安巡查/菜谱，并查看食安相关数据（健康证、告警、物联设备、留样、巡检）', status: 1, userCount: 3, createTime: '2024-01-01', permissions: ['samples','ledger','patrol','safetyInspect','recipes','personnel','alerts','devices'] },
+    { id: 4, name: '监管用户', code: 'inspector', description: '食品安全监管查看权限，包括视频监控查看', status: 1, userCount: 1, createTime: '2024-03-15', permissions: ['monitor'] }
   ],
 
   // 系统参数
@@ -240,7 +240,7 @@ const DataStore = {
       this.set('sysParams', MOCK_DATA.sysParams);
     }
     // 数据版本迁移：确保预警数据包含待审核记录，角色数据包含权限
-    const DATA_VERSION = '2026-07-26-v2';
+    const DATA_VERSION = '2026-07-26-v3';
     if (this.get('dataVersion') !== DATA_VERSION) {
       this.set('alerts', MOCK_DATA.alerts);
       this.set('roles', MOCK_DATA.roles);
