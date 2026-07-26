@@ -725,14 +725,11 @@
         { key: 'patrolReview', label: '巡查记录审核', icon: '&#128269;' },
       ]},
       staff: { name: '从业人员', menus: [
-        { key: 'dashboard', label: '工作台', icon: '&#128202;' },
-        { key: 'samples', label: '我的留样', icon: '&#129379;' },
-        { key: 'checks', label: '我的检查', icon: '&#129658;' },
+        { key: 'samples', label: '留样管理', icon: '&#129379;' },
         { key: 'ledger', label: '台账填报', icon: '&#128221;' },
-        { key: 'patrol', label: '巡检记录', icon: '&#128269;' },
+        { key: 'patrol', label: '巡检', icon: '&#128269;' },
         { key: 'safetyInspect', label: '食安巡查', icon: '&#128737;' },
-        { key: 'recipes', label: '菜谱维护', icon: '&#127869;' },
-        { key: 'personnel', label: '个人信息', icon: '&#128100;' },
+        { key: 'recipes', label: '菜谱信息维护', icon: '&#127869;' },
       ]},
       inspector: { name: '监管用户', menus: [
         { key: 'dashboard', label: '工作台', icon: '&#128202;' },
@@ -741,7 +738,7 @@
       ]}
     };
 
-    let currentPage = 'dashboard';
+    let currentPage = (roleConfig[currentUser.role] && roleConfig[currentUser.role].menus[0]) ? roleConfig[currentUser.role].menus[0].key : 'dashboard';
 
     // ===================== 导航渲染 =====================
     function renderNav() {
