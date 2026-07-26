@@ -719,18 +719,10 @@
       ]},
       canteenAdmin: { name: '食堂管理员', menus: [
         { key: 'dashboard', label: '工作台', icon: '&#128202;' },
-        { key: 'devices', label: '物联设备', icon: '&#128268;' },
-        { key: 'alerts', label: '异常预警', icon: '&#128680;' },
-        { key: 'alertReview', label: '预警审核', icon: '&#9989;' },
-        { key: 'samples', label: '留样管理', icon: '&#129379;' },
-        { key: 'personnel', label: '人员管理', icon: '&#128100;' },
-        { key: 'checks', label: '晨午晚检', icon: '&#129658;' },
-        { key: 'ledger', label: '台账填报', icon: '&#128221;' },
-        { key: 'patrol', label: '巡检记录', icon: '&#128269;' },
-        { key: 'safetyInspect', label: '食安巡查', icon: '&#128737;' },
-        { key: 'recipes', label: '菜谱维护', icon: '&#127869;' },
-        { key: 'access', label: '门禁管理', icon: '&#128275;' },
-        { key: 'monitor', label: '视频监控', icon: '&#127909;' },
+        { key: 'users', label: '各食堂用户管理', icon: '&#128100;' },
+        { key: 'roles', label: '角色管理', icon: '&#128101;' },
+        { key: 'alertReview', label: '预警信息审核', icon: '&#9989;' },
+        { key: 'patrolReview', label: '巡查记录审核', icon: '&#128269;' },
       ]},
       staff: { name: '从业人员', menus: [
         { key: 'dashboard', label: '工作台', icon: '&#128202;' },
@@ -926,6 +918,8 @@
         case 'monitor': renderMonitor(content); break;
         case 'dataView': renderDataView(content); break;
         case 'roles': renderRoles(content); break;
+        case 'users': renderUsers(content); break;
+        case 'patrolReview': renderPatrolReview(content); break;
         case 'system': renderSystem(content); break;
         default: content.innerHTML = '<div style="text-align:center;padding:80px;color:#999">功能开发中</div>';
       }
@@ -1427,8 +1421,8 @@
 
     // ===== 预警审核页面 =====
     function renderAlertReview(el) {
-      setBreadcrumb(['首页', '预警审核']);
-      let list = currentUser.canteenId ? DB.alerts.filter(a => a.canteenId === currentUser.canteenId) : DB.alerts;
+      setBreadcrumb(['首页', '预警信息审核']);
+      let list = DB.alerts;
       list = list.filter(a => a.status === 'pending');
       window.alertReviewPageState = window.alertReviewPageState || { currentPage: 1, pageSize: 10 };
       var state = window.alertReviewPageState;
@@ -2347,7 +2341,7 @@
       const headers = ['ID', '日期', '巡检区域', '巡检人', '巡检内容', '结果', '问题描述', '状态', '操作'];
       const rows = paged.map(p => {
         const resultTag = p.result === '正常' ? '<span class="tag tag-green">正常</span>' : '<span class="tag tag-red">异常</span>';
-        const statusTag = p.status === '已完成' ? '<span class="tag tag-green">已完成</span>' : '<span class="tag tag-orange">待复核</span>';
+        const statusTag = p.status === '已完成' ? '<span class="tag tag-green">已完成</span>' : p.status === '已驳回' ? '<span class="tag tag-red">已驳回</span>' : '<span class="tag tag-orange">待复核</span>';
         return [p.id, p.date, p.area, p.inspector, p.item, resultTag, p.problem || '-', statusTag,
           `<button class="btn btn-sm btn-default" onclick="showPatrolDetail(${p.id})">详情</button>` +
           ` <button class="btn btn-sm btn-primary" onclick="editPatrol(${p.id})">编辑</button>` +
@@ -2356,7 +2350,7 @@
       el.innerHTML = `
         <div class="filter-bar">
           <select id="patrolResultFilter" onchange="filterPatrolList()"><option value="">全部结果</option><option>正常</option><option>异常</option></select>
-          <select id="patrolStatusFilter" onchange="filterPatrolList()"><option value="">全部状态</option><option>已完成</option><option>待复核</option></select>
+          <select id="patrolStatusFilter" onchange="filterPatrolList()"><option value="">全部状态</option><option>已完成</option><option>待复核</option><option>已驳回</option></select>
           <input type="text" id="patrolSearchInput" placeholder="搜索区域/内容" oninput="filterPatrolList()">
           <button class="btn btn-primary" onclick="openPatrolModal()">+ 新增巡检</button>
         </div>
@@ -2381,7 +2375,7 @@
       const headers = ['ID', '日期', '巡检区域', '巡检人', '巡检内容', '结果', '问题描述', '状态', '操作'];
       const rows = paged.map(p => {
         const resultTag = p.result === '正常' ? '<span class="tag tag-green">正常</span>' : '<span class="tag tag-red">异常</span>';
-        const statusTag = p.status === '已完成' ? '<span class="tag tag-green">已完成</span>' : '<span class="tag tag-orange">待复核</span>';
+        const statusTag = p.status === '已完成' ? '<span class="tag tag-green">已完成</span>' : p.status === '已驳回' ? '<span class="tag tag-red">已驳回</span>' : '<span class="tag tag-orange">待复核</span>';
         return [p.id, p.date, p.area, p.inspector, p.item, resultTag, p.problem || '-', statusTag,
           `<button class="btn btn-sm btn-default" onclick="showPatrolDetail(${p.id})">详情</button>` +
           ` <button class="btn btn-sm btn-primary" onclick="editPatrol(${p.id})">编辑</button>` +
@@ -2444,6 +2438,7 @@
           <div class="detail-item"><div class="label">结果</div><div class="value">${p.result}</div></div>
           <div class="detail-item" style="grid-column:span 2"><div class="label">问题描述</div><div class="value">${p.problem || '-'}</div></div>
           <div class="detail-item"><div class="label">状态</div><div class="value">${p.status}</div></div>
+          ${p.reviewOpinion ? `<div class="detail-item" style="grid-column:span 2"><div class="label">审核意见</div><div class="value">${p.reviewOpinion}（${p.reviewer || ''} ${p.reviewTime || ''}）</div></div>` : ''}
         </div>`, '<button class="btn btn-default" onclick="closeModal()">关闭</button>');
     };
     window.deletePatrol = function(id) {
@@ -2476,6 +2471,70 @@
       }
       DataStore.set('patrols', DB.patrols); closeModal();
       showToast('保存成功', 'success'); renderPatrol(document.getElementById('content'));
+    };
+
+    // ===== 巡查记录审核（食堂管理员） =====
+    function renderPatrolReview(el) {
+      setBreadcrumb(['首页', '巡查记录审核']);
+      let list = DB.patrols.filter(p => p.status === '待复核');
+      window.patrolReviewPageState = window.patrolReviewPageState || { currentPage: 1, pageSize: 10 };
+      var state = window.patrolReviewPageState;
+      var totalCount = list.length;
+      var paged = list.slice((state.currentPage - 1) * state.pageSize, state.currentPage * state.pageSize);
+      const headers = ['编号', '日期', '巡检区域', '巡检人', '巡检内容', '结果', '食堂', '问题描述', '操作'];
+      const rows = paged.map(p => {
+        const canteen = DB.canteens.find(c => c.id === p.canteenId);
+        const resultTag = p.result === '正常' ? '<span class="tag tag-green">正常</span>' : '<span class="tag tag-red">异常</span>';
+        return [
+          p.id, p.date, p.area, p.inspector, p.item, resultTag, canteen ? canteen.name : '-', p.problem || '-',
+          `<button class="btn btn-sm btn-default" onclick="showPatrolDetail(${p.id})">详情</button> ` +
+          `<button class="btn btn-sm btn-success" onclick="openPatrolReviewModal(${p.id})">审核</button>`
+        ];
+      });
+      el.innerHTML = `
+        <div style="background:#fff7e6;border:1px solid #ffd591;border-radius:4px;padding:12px 16px;margin-bottom:16px;color:#ad6800;font-size:13px">
+          当前共有 <b>${totalCount}</b> 条待复核巡检记录，请及时处理。
+        </div>
+        <div class="card">
+          <div class="card-body" id="patrolReviewTableBody">
+            ${renderTable(headers, rows, '暂无待复核巡检记录')}
+            ${renderPaginationBar(state, 'goToPatrolReviewPage', totalCount)}
+          </div>
+        </div>
+      `;
+    }
+    window.goToPatrolReviewPage = function(page) {
+      window.patrolReviewPageState.currentPage = page;
+      renderPatrolReview(document.getElementById('content'));
+    };
+    const __reviewingPatrolId = { val: null };
+    window.openPatrolReviewModal = function(id) {
+      const p = DB.patrols.find(x => x.id === id); if (!p) return;
+      __reviewingPatrolId.val = id;
+      openModal('巡检记录审核 - #' + p.id, `
+        <div class="detail-list" style="margin-bottom:12px">
+          <div class="detail-item"><div class="label">巡检区域</div><div class="value">${p.area}</div></div>
+          <div class="detail-item"><div class="label">巡检人</div><div class="value">${p.inspector}</div></div>
+          <div class="detail-item"><div class="label">巡检内容</div><div class="value">${p.item}</div></div>
+          <div class="detail-item"><div class="label">结果</div><div class="value">${p.result}</div></div>
+          <div class="detail-item" style="grid-column:span 2"><div class="label">问题描述</div><div class="value">${p.problem || '-'}</div></div>
+        </div>
+        <div class="form-group"><label>审核意见 <span class="required">*</span></label><textarea id="patrolReviewOpinion" rows="3" placeholder="请填写审核意见（通过或驳回均需填写）"></textarea></div>
+      `, '<button class="btn btn-default" onclick="closeModal()">取消</button><button class="btn btn-danger" onclick="submitPatrolReview(0)">驳回</button><button class="btn btn-success" onclick="submitPatrolReview(1)">通过</button>');
+    };
+    window.submitPatrolReview = function(pass) {
+      const id = __reviewingPatrolId.val;
+      const p = DB.patrols.find(x => x.id === id); if (!p) return;
+      const opinion = document.getElementById('patrolReviewOpinion').value.trim();
+      if (!opinion) { showToast('请填写审核意见', 'warning'); return; }
+      p.status = pass ? '已完成' : '已驳回';
+      p.reviewOpinion = opinion;
+      p.reviewer = currentUser.realName;
+      p.reviewTime = new Date().toISOString().slice(0, 16).replace('T', ' ');
+      DataStore.set('patrols', DB.patrols);
+      closeModal();
+      showToast(pass ? '已通过审核' : '已驳回', 'success');
+      renderPatrolReview(document.getElementById('content'));
     };
 
     // ===== 食安巡查 =====
@@ -3066,6 +3125,12 @@
     // ===== 用户管理编辑 =====
     var __editingUserId = null;
 
+    function userRoleOptions(selected) {
+      var all = [['admin', '平台管理员'], ['canteenAdmin', '食堂管理员'], ['staff', '从业人员'], ['inspector', '监管用户']];
+      var allowed = currentUser.role === 'canteenAdmin' ? [['canteenAdmin', '食堂管理员'], ['staff', '从业人员']] : all;
+      return allowed.map(function(o) { return '<option value="' + o[0] + '"' + (selected === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('');
+    }
+
     window.openUserModal = function() {
       __editingUserId = null;
       openModal('新增用户',
@@ -3073,11 +3138,7 @@
          <div class="form-group"><label>姓名 <span class="required">*</span></label><input type="text" id="uRealName" placeholder="真实姓名"></div>
          <div class="form-group"><label>角色 <span class="required">*</span></label>
            <select id="uRole">
-             <option value="">请选择角色</option>
-             <option value="admin">平台管理员</option>
-             <option value="canteenAdmin">食堂管理员</option>
-             <option value="staff">从业人员</option>
-             <option value="inspector">监管用户</option>
+             <option value="">请选择角色</option>${userRoleOptions('')}
            </select>
          </div>
          <div class="form-group"><label>所属食堂</label>
@@ -3105,12 +3166,7 @@
         `<div class="form-group"><label>账号 <span class="required">*</span></label><input type="text" id="uUsername" value="${u.username}"></div>
          <div class="form-group"><label>姓名 <span class="required">*</span></label><input type="text" id="uRealName" value="${u.realName}"></div>
          <div class="form-group"><label>角色 <span class="required">*</span></label>
-           <select id="uRole">
-             <option value="admin"${u.role === 'admin' ? ' selected' : ''}>平台管理员</option>
-             <option value="canteenAdmin"${u.role === 'canteenAdmin' ? ' selected' : ''}>食堂管理员</option>
-             <option value="staff"${u.role === 'staff' ? ' selected' : ''}>从业人员</option>
-             <option value="inspector"${u.role === 'inspector' ? ' selected' : ''}>监管用户</option>
-           </select>
+           <select id="uRole">${userRoleOptions(u.role)}</select>
          </div>
          <div class="form-group"><label>所属食堂</label>
            <select id="uCanteenId">
@@ -3165,7 +3221,36 @@
         showToast('用户已创建，默认密码：123456', 'success');
       }
       closeModal();
-      renderSystem(document.getElementById('content'));
+      if (currentPage === 'users') renderUsers(document.getElementById('content'));
+      else renderSystem(document.getElementById('content'));
+    };
+
+    // ===== 各食堂用户管理（食堂管理员） =====
+    function renderUsers(el) {
+      setBreadcrumb(['首页', '各食堂用户管理']);
+      window.userPageState = window.userPageState || { currentPage: 1, pageSize: 10 };
+      var state = window.userPageState;
+      var list = DB.users;
+      var totalCount = list.length;
+      var paged = list.slice((state.currentPage - 1) * state.pageSize, state.currentPage * state.pageSize);
+      el.innerHTML = `
+        <div class="card">
+          <div class="card-header"><div class="card-title">各食堂用户管理</div><button class="btn btn-sm btn-primary" onclick="openUserModal()">+ 新增用户</button></div>
+          <div class="card-body" id="userTableBody">
+            ${renderTable(['ID', '账号', '姓名', '角色', '所属食堂', '电话', '最后登录', '状态', '操作'],
+              paged.map(u => {
+                const canteen = DB.canteens.find(c => c.id === u.canteenId);
+                const roleTag = u.role === 'admin' ? '<span class="tag tag-red">平台管理员</span>' : u.role === 'canteenAdmin' ? '<span class="tag tag-blue">食堂管理员</span>' : u.role === 'staff' ? '<span class="tag tag-green">从业人员</span>' : '<span class="tag tag-orange">监管用户</span>';
+                const statusTag = u.status ? '<span class="tag tag-green">正常</span>' : '<span class="tag tag-gray">禁用</span>';
+                return [u.id, u.username, u.realName, roleTag, canteen ? canteen.name : '-', u.phone, u.lastLogin, statusTag, '<button class="btn btn-sm btn-default" onclick="editUser(' + u.id + ')">编辑</button>'];
+              }))}
+            ${renderPaginationBar(state, 'goToUserPage', totalCount)}
+          </div>
+        </div>`;
+    }
+    window.goToUserPage = function(page) {
+      window.userPageState.currentPage = page;
+      renderUsers(document.getElementById('content'));
     };
 
     // ===================== 启动 =====================
