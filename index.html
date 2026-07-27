@@ -3279,10 +3279,10 @@
             <option value="">全部食堂</option>${canteenOpts}</select></div>
           <div class="grp"><button class="btn-mini" onclick="monitorScreenshotAll()">截图全部</button></div>
         </div>
+        <div style="background:#eef6ff;color:#1f5fa8;border:1px solid #cfe3fb;border-radius:6px;padding:8px 12px;font-size:12px;margin:10px 0">提示：拖动面板左上角 ⠿ 可调整播放顺序；轮播开启后按设定间隔自动切换通道；回放支持自定义日期、起止时间、多倍速与进度拖拽。</div>
         <div id="playbackBar"></div>
         <div class="monitor-grid live-${ms.layout}" id="monitorGrid"></div>
         <div class="playback-strip" id="playbackStrip" style="display:none"></div>
-        <div style="color:#888;font-size:12px;margin-top:8px">提示：拖动面板左上角 ⠿ 可调整播放顺序；轮播开启后按设定间隔自动切换通道；回放支持自定义日期、起止时间、多倍速与进度拖拽。</div>
       `;
       monitorRenderGrid();
       if (ms.mode === 'playback') { monitorDrawThumbs(); document.getElementById('playbackStrip').style.display = 'flex'; }
