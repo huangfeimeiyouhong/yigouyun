@@ -3076,9 +3076,7 @@
       ctx.fillStyle = '#ffd27f'; ctx.beginPath(); ctx.arc(px, py - 20, 11, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = '#4ea1ff'; ctx.fillRect(px - 10, py - 9, 20, 30);
       ctx.fillStyle = 'rgba(255,255,255,0.03)'; for (let y = 0; y < H; y += 4) ctx.fillRect(0, y, W, 1);
-      ctx.fillStyle = '#9effa0'; ctx.font = 'bold 15px monospace'; ctx.textAlign = 'left';
-      ctx.fillText((cam ? cam.name : 'CAM') + '  ' + (cam ? cam.location : ''), 12, 22);
-      if (opts.rec) { ctx.fillStyle = '#ff4d4f'; ctx.beginPath(); ctx.arc(36, 40, 5, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#fff'; ctx.font = '12px monospace'; ctx.fillText('REC', 46, 44); }
+      if (opts.rec) { ctx.fillStyle = '#ff4d4f'; ctx.beginPath(); ctx.arc(16, 20, 5, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#fff'; ctx.font = '12px monospace'; ctx.fillText('REC', 26, 24); }
       ctx.fillStyle = '#cfe'; ctx.font = '13px monospace'; ctx.textAlign = 'right';
       ctx.fillText(opts.timeStr || (opts.playback ? (Math.floor(sec) + 's') : ''), W - 12, H - 12);
       if (opts.watermark) { ctx.fillStyle = 'rgba(255,255,255,0.16)'; ctx.font = '14px monospace'; ctx.textAlign = 'right'; ctx.fillText('易购云食安 · ' + (cam ? cam.name : ''), W - 12, 40); }
