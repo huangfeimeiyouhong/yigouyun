@@ -3174,9 +3174,10 @@
     function startMonitorLoop() { stopMonitorLoop(); __monitorLast = 0; __monitorRAF = requestAnimationFrame(monitorLoop); }
     function stopMonitorLoop() { if (__monitorRAF) { cancelAnimationFrame(__monitorRAF); __monitorRAF = null; } stopMonitorCarousel(); }
     function startMonitorCarousel() {
+      const ms = window.monitorState;
       stopMonitorCarousel();
       __monitorTimer = setInterval(() => {
-        const ms = window.monitorState; if (!ms.carousel) return;
+        if (!ms.carousel) return;
         ms.offset = (ms.offset + 1) % ms.order.length; monitorRebuildSlots(); monitorRenderGrid();
       }, ms.carouselInterval * 1000);
     }
