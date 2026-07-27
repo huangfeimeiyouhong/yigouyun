@@ -2230,17 +2230,19 @@
       var state = window.accPageState;
       var totalCount = list.length;
       var paged = list.slice((state.currentPage - 1) * state.pageSize, state.currentPage * state.pageSize);
-      const headers = ['门禁名称', '所属食堂', '位置', '类型', 'IP地址', '状态', '最后事件', '操作'];
+      const canEdit = !isViewOnly();
+      const headers = [(canEdit ? '<input type="checkbox" id="accSelectAll" onchange="toggleAccAll(this)" title="全选/取消全选">' : ''), '门禁名称', '所属食堂', '位置', '类型', 'IP地址', '状态', '最后事件', '操作'];
       const rows = paged.map(a => {
         const canteen = DB.canteens.find(c => c.id === a.canteenId);
         const statusStr = a.status === '正常' ? '<span class="status-dot online"></span>正常' : '<span class="status-dot offline"></span>离线';
         return [
+          (canEdit ? '<input type="checkbox" class="acc-cb" data-id="' + a.id + '">' : ''),
           a.name, canteen ? canteen.name : '-', a.location, a.type, a.ip, statusStr,
           a.lastEvent + '<br><span style="font-size:12px;color:#999">' + a.eventType + ' - ' + a.eventPerson + '</span>',
           `<button class="btn btn-sm btn-default" onclick="showAccessDetail(${a.id})">详情</button>` +
           ` <button class="btn btn-sm btn-default" onclick="showAccessLogs(${a.id})">记录</button>` +
-          ` <button class="btn btn-sm btn-primary" onclick="editAccess(${a.id})">编辑</button>` +
-          ` <button class="btn btn-sm btn-danger" onclick="deleteAccess(${a.id})">删除</button>`
+          (canEdit ? ` <button class="btn btn-sm btn-primary" onclick="editAccess(${a.id})">编辑</button>` +
+          ` <button class="btn btn-sm btn-danger" onclick="deleteAccess(${a.id})">删除</button>` : '')
         ];
       });
 
@@ -2251,6 +2253,7 @@
           <input type="text" id="accSearchInput" placeholder="搜索门禁名称" oninput="filterAccessList()">
           <button class="btn btn-primary" onclick="openAccessModal()">+ 添加门禁</button>
           <button class="btn btn-default" onclick="openBatchImport('access')">批量导入</button>
+          ${(!isViewOnly()) ? '<button class="btn btn-danger" onclick="batchDeleteAccess()">批量删除</button>' : ''}
         </div>
         <div class="card">
           <div class="card-body" id="accTableBody">
@@ -2278,16 +2281,17 @@
       var state = window.accPageState;
       var totalCount = list.length;
       var paged = list.slice((state.currentPage - 1) * state.pageSize, state.currentPage * state.pageSize);
-      const headers = ['门禁名称', '所属食堂', '位置', '类型', 'IP地址', '状态', '最后事件', '操作'];
+      const canEdit = !isViewOnly();
+      const headers = [(canEdit ? '<input type="checkbox" id="accSelectAll" onchange="toggleAccAll(this)" title="全选/取消全选">' : ''), '门禁名称', '所属食堂', '位置', '类型', 'IP地址', '状态', '最后事件', '操作'];
       const rows = paged.map(a => {
         const canteen = DB.canteens.find(c => c.id === a.canteenId);
         const statusStr = a.status === '正常' ? '<span class="status-dot online"></span>正常' : '<span class="status-dot offline"></span>离线';
-        return [a.name, canteen ? canteen.name : '-', a.location, a.type, a.ip, statusStr,
+        return [(canEdit ? '<input type="checkbox" class="acc-cb" data-id="' + a.id + '">' : ''), a.name, canteen ? canteen.name : '-', a.location, a.type, a.ip, statusStr,
           a.lastEvent + '<br><span style="font-size:12px;color:#999">' + a.eventType + ' - ' + a.eventPerson + '</span>',
           `<button class="btn btn-sm btn-default" onclick="showAccessDetail(${a.id})">详情</button>` +
           ` <button class="btn btn-sm btn-default" onclick="showAccessLogs(${a.id})">记录</button>` +
-          ` <button class="btn btn-sm btn-primary" onclick="editAccess(${a.id})">编辑</button>` +
-          ` <button class="btn btn-sm btn-danger" onclick="deleteAccess(${a.id})">删除</button>`];
+          (canEdit ? ` <button class="btn btn-sm btn-primary" onclick="editAccess(${a.id})">编辑</button>` +
+          ` <button class="btn btn-sm btn-danger" onclick="deleteAccess(${a.id})">删除</button>` : '')];
       });
       document.getElementById('accTableBody').innerHTML = renderTable(headers, rows) + renderPaginationBar(state, 'goToAccPage', totalCount);
     };
@@ -2319,6 +2323,22 @@
       const idx = DB.access.findIndex(a => a.id === id);
       if (idx > -1) { DB.access.splice(idx, 1); DataStore.set('access', DB.access); }
       showToast('已删除', 'success');
+      renderAccess(document.getElementById('content'));
+    };
+
+    window.toggleAccAll = function(master) {
+      document.querySelectorAll('.acc-cb').forEach(cb => { cb.checked = master.checked; });
+    };
+
+    window.batchDeleteAccess = async function() {
+      if (isViewOnly()) return;
+      const checked = Array.from(document.querySelectorAll('.acc-cb:checked')).map(el => el.dataset.id);
+      if (!checked.length) { showToast('请先勾选要删除的门禁', 'warning'); return; }
+      if (!await showConfirm('确认批量删除选中的 ' + checked.length + ' 个门禁？此操作不可撤销。', { title: '批量删除', type: 'danger', danger: true })) return;
+      const ids = new Set(checked);
+      DB.access = DB.access.filter(a => !ids.has(String(a.id)));
+      DataStore.set('access', DB.access);
+      showToast('已删除 ' + checked.length + ' 个门禁', 'success');
       renderAccess(document.getElementById('content'));
     };
 
