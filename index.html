@@ -3157,7 +3157,7 @@
         else { sec = (ts / 1000) + idx * 13; timeStr = new Date().toLocaleString('zh-CN'); }
         const offline = !cam || cam.status === '离线';
         if (isPlayback || offline) {
-          drawMonitorPlaceholder(ctx, cv.width, cv.height, cam, { watermark: ms.watermark, timeStr: timeStr });
+          drawMonitorPlaceholder(ctx, cv.width, cv.height, cam, { watermark: ms.watermark, timeStr: isPlayback ? timeStr : '' });
         } else {
           drawMonitorScene(ctx, cv.width, cv.height, cam, sec, { watermark: ms.watermark, rec: rec, playback: isPlayback, timeStr: timeStr });
         }
