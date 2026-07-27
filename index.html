@@ -3082,6 +3082,34 @@
       if (opts.watermark) { ctx.fillStyle = 'rgba(255,255,255,0.16)'; ctx.font = '14px monospace'; ctx.textAlign = 'right'; ctx.fillText('易购云食安 · ' + (cam ? cam.name : ''), W - 12, 40); }
     }
 
+    function drawMonitorPlaceholder(ctx, W, H, cam, opts) {
+      opts = opts || {};
+      const g = ctx.createLinearGradient(0, 0, 0, H);
+      g.addColorStop(0, '#171717'); g.addColorStop(1, '#0a0a0a');
+      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+      const cx = W / 2, cy = H / 2 - 18, s = Math.min(W, H) * 0.10;
+      ctx.strokeStyle = 'rgba(200,200,200,0.4)'; ctx.lineWidth = Math.max(2, s * 0.09); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      // 摄像机机身
+      ctx.beginPath();
+      ctx.moveTo(cx - s, cy - s * 0.62);
+      ctx.lineTo(cx + s * 0.42, cy - s * 0.62);
+      ctx.lineTo(cx + s, cy);
+      ctx.lineTo(cx + s * 0.42, cy + s * 0.62);
+      ctx.lineTo(cx - s, cy + s * 0.62);
+      ctx.closePath(); ctx.stroke();
+      // 镜头
+      ctx.beginPath(); ctx.arc(cx - s * 0.18, cy, s * 0.3, 0, Math.PI * 2); ctx.stroke();
+      // 斜杠
+      ctx.beginPath(); ctx.moveTo(cx - s * 1.15, cy - s * 0.95); ctx.lineTo(cx + s * 1.15, cy + s * 0.95); ctx.stroke();
+      ctx.fillStyle = '#d2d2d2'; ctx.font = 'bold ' + Math.round(s * 0.5) + 'px "Microsoft YaHei", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+      ctx.fillText('视频信号已断开', cx, cy + s * 1.5);
+      ctx.fillStyle = '#8f8f8f'; ctx.font = Math.round(s * 0.36) + 'px "Microsoft YaHei", sans-serif';
+      ctx.fillText((cam ? cam.name : '摄像头') + (cam ? ' · ' + cam.location : ''), cx, cy + s * 1.5 + s * 0.62);
+      ctx.textBaseline = 'alphabetic';
+      if (opts.timeStr) { ctx.fillStyle = '#7a7a7a'; ctx.font = '12px monospace'; ctx.textAlign = 'right'; ctx.fillText(opts.timeStr, W - 12, H - 12); }
+      if (opts.watermark && cam) { ctx.fillStyle = 'rgba(255,255,255,0.13)'; ctx.font = '13px monospace'; ctx.textAlign = 'right'; ctx.fillText('易购云食安 · ' + cam.name, W - 12, 40); }
+    }
+
     function playbackTotalSec() {
       const pb = window.monitorState.playback;
       const sh = pb.start.split(':').map(Number), eh = pb.end.split(':').map(Number);
@@ -3127,7 +3155,12 @@
         let sec, timeStr, isPlayback = false, rec = true;
         if (ms.mode === 'playback') { isPlayback = true; rec = false; sec = ms.playback.pos * playbackTotalSec(); timeStr = monitorPBClockText(); }
         else { sec = (ts / 1000) + idx * 13; timeStr = new Date().toLocaleString('zh-CN'); }
-        drawMonitorScene(ctx, cv.width, cv.height, cam, sec, { watermark: ms.watermark, rec: rec, playback: isPlayback, timeStr: timeStr });
+        const offline = !cam || cam.status === '离线';
+        if (isPlayback || offline) {
+          drawMonitorPlaceholder(ctx, cv.width, cv.height, cam, { watermark: ms.watermark, timeStr: timeStr });
+        } else {
+          drawMonitorScene(ctx, cv.width, cv.height, cam, sec, { watermark: ms.watermark, rec: rec, playback: isPlayback, timeStr: timeStr });
+        }
       });
     }
     function startMonitorLoop() { stopMonitorLoop(); __monitorLast = 0; __monitorRAF = requestAnimationFrame(monitorLoop); }
@@ -3168,7 +3201,7 @@
             <canvas width="640" height="360"></canvas>
             <div class="panel-bar"><span class="drag" title="拖动调整播放顺序">&#10303;</span>
               <span class="cam-name">${cam ? cam.name : ''}</span>
-              <span class="status-chip">${cam ? cam.status : ''}</span></div>
+              <span class="status-chip ${cam && cam.status === '离线' ? 'off' : 'on'}">${cam ? cam.status : ''}</span></div>
             <div class="panel-actions">
               <button onclick="monitorScreenshot('${camId}')">截图</button>
               <button onclick="monitorClip('${camId}')">片段下载</button>
@@ -3180,7 +3213,7 @@
     function monitorDrawThumbs() {
       document.querySelectorAll('#playbackStrip .playback-thumb canvas').forEach(cv => {
         const cam = DB.cameras.find(c => c.id === cv.dataset.thumb);
-        if (cam) drawMonitorScene(cv.getContext('2d'), cv.width, cv.height, cam, 7, { watermark: false, rec: false });
+        if (cam) drawMonitorPlaceholder(cv.getContext('2d'), cv.width, cv.height, cam, { watermark: false });
       });
     }
     function monitorRenderToolbar() {

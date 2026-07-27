@@ -67,7 +67,9 @@
 .pb-controls input[type=date], .pb-controls input[type=time] { padding: 5px 8px; border: 1px solid #d9d9d9; border-radius: 6px; font-size: 13px; }
 .pb-progress { flex: 1; min-width: 220px; display: flex; align-items: center; gap: 8px; }
 .pb-progress input[type=range] { flex: 1; }
-.status-chip { font-size: 12px; padding: 2px 8px; border-radius: 10px; background: #e8f5ee; color: #1a7f47; white-space: nowrap; }
+.status-chip { font-size: 12px; padding: 2px 8px; border-radius: 10px; white-space: nowrap; }
+.status-chip.on { background: #e8f5ee; color: #1a7f47; }
+.status-chip.off { background: #fdecec; color: #d4380d; }
 
 /* 批量操作复选框 */
 .pers-cb, #persSelectAll { width: 16px; height: 16px; cursor: pointer; accent-color: #1f8fff; }
