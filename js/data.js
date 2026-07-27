@@ -87,7 +87,15 @@ const MOCK_DATA = {
     { id: 6, personId: 2, name: '刘志强', canteenId: 1, type: '午检', date: '2026-07-21', time: '13:05', temperature: 36.7, symptoms: '无', nails: '合格', uniform: '合格', healthStatus: '正常', deviceId: 'CHK001', remark: '' },
     { id: 7, personId: 5, name: '周小芳', canteenId: 1, type: '晨检', date: '2026-07-20', time: '06:20', temperature: 36.2, symptoms: '无', nails: '合格', uniform: '合格', healthStatus: '正常', deviceId: 'CHK001', remark: '' },
     { id: 8, personId: 10, name: '林晓红', canteenId: 1, type: '晨检', date: '2026-07-20', time: '06:05', temperature: 36.8, symptoms: '无', nails: '合格', uniform: '合格', healthStatus: '正常', deviceId: 'CHK001', remark: '' },
-    { id: 9, personId: 6, name: '吴国强', canteenId: 2, type: '晨检', date: '2026-07-21', time: '05:45', temperature: 36.5, symptoms: '无', nails: '合格', uniform: '不合格', healthStatus: '异常', deviceId: 'CHK002', remark: '工作服污渍未更换' }
+    { id: 9, personId: 6, name: '吴国强', canteenId: 2, type: '晨检', date: '2026-07-21', time: '05:45', temperature: 36.5, symptoms: '无', nails: '合格', uniform: '不合格', healthStatus: '异常', deviceId: 'CHK002', remark: '工作服污渍未更换' },
+    { id: 10, personId: 1, name: '陈小梅', canteenId: 1, type: '晚检', date: '2026-07-21', time: '21:00', temperature: 36.4, symptoms: '无', nails: '合格', uniform: '合格', healthStatus: '正常', deviceId: 'CHK001', remark: '' },
+    { id: 11, personId: 2, name: '刘志强', canteenId: 1, type: '晚检', date: '2026-07-21', time: '21:05', temperature: 36.6, symptoms: '无', nails: '合格', uniform: '合格', healthStatus: '正常', deviceId: 'CHK001', remark: '' },
+    { id: 12, personId: 4, name: '孙大海', canteenId: 1, type: '午检', date: '2026-07-21', time: '12:50', temperature: 36.5, symptoms: '无', nails: '合格', uniform: '合格', healthStatus: '正常', deviceId: 'CHK001', remark: '' },
+    { id: 13, personId: 4, name: '孙大海', canteenId: 1, type: '晚检', date: '2026-07-21', time: '21:10', temperature: 36.4, symptoms: '无', nails: '合格', uniform: '合格', healthStatus: '正常', deviceId: 'CHK001', remark: '' },
+    { id: 14, personId: 3, name: '赵玉华', canteenId: 2, type: '午检', date: '2026-07-21', time: '12:40', temperature: 36.7, symptoms: '无', nails: '合格', uniform: '合格', healthStatus: '正常', deviceId: 'CHK002', remark: '' },
+    { id: 15, personId: 3, name: '赵玉华', canteenId: 2, type: '晚检', date: '2026-07-21', time: '21:15', temperature: 36.6, symptoms: '无', nails: '合格', uniform: '合格', healthStatus: '正常', deviceId: 'CHK002', remark: '' },
+    { id: 16, personId: 6, name: '吴国强', canteenId: 2, type: '午检', date: '2026-07-21', time: '12:45', temperature: 36.8, symptoms: '无', nails: '合格', uniform: '不合格', healthStatus: '异常', deviceId: 'CHK002', remark: '工作服污渍未更换' },
+    { id: 17, personId: 6, name: '吴国强', canteenId: 2, type: '晚检', date: '2026-07-21', time: '21:20', temperature: 36.7, symptoms: '无', nails: '合格', uniform: '不合格', healthStatus: '异常', deviceId: 'CHK002', remark: '工作服污渍未更换' }
   ],
 
   // 门禁信息
@@ -240,12 +248,13 @@ const DataStore = {
       this.set('sysParams', MOCK_DATA.sysParams);
     }
     // 数据版本迁移：确保预警数据包含待审核记录，角色数据包含权限
-    const DATA_VERSION = '2026-07-27-v1';
+    const DATA_VERSION = '2026-07-27-v2';
     if (this.get('dataVersion') !== DATA_VERSION) {
       this.set('alerts', MOCK_DATA.alerts);
       this.set('roles', MOCK_DATA.roles);
       this.set('recipes', MOCK_DATA.recipes);
       this.set('cameras', MOCK_DATA.cameras);
+      this.set('checks', MOCK_DATA.checks);
       this.set('dataVersion', DATA_VERSION);
     }
   },
