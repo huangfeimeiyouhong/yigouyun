@@ -3249,6 +3249,7 @@
       monitorRenderGrid();
       if (ms.mode === 'playback') { monitorDrawThumbs(); document.getElementById('playbackStrip').style.display = 'flex'; }
       startMonitorLoop();
+      if (ms.carousel) startMonitorCarousel();
     }
 
     // ----- 监控控件交互 -----
