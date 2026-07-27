@@ -54,6 +54,7 @@
 .monitor-panel canvas { display: block; width: 100%; aspect-ratio: 16 / 9; background: #05140d; }
 .panel-bar { position: absolute; top: 0; left: 0; right: 0; display: flex; align-items: center; gap: 6px; padding: 6px 8px; background: linear-gradient(rgba(0,0,0,.5), transparent); font-size: 12px; color: #cfe; }
 .panel-bar select { font-size: 12px; background: #0d2a1c; color: #cfe; border: 1px solid #1f5a3a; border-radius: 4px; padding: 2px 4px; max-width: 55%; }
+.panel-bar .cam-name { font-size: 13px; font-weight: 600; color: #9effa0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 55%; }
 .panel-bar .drag { color: #9effa0; cursor: grab; font-size: 14px; }
 .panel-actions { position: absolute; bottom: 8px; right: 8px; display: flex; gap: 6px; }
 .panel-actions button { font-size: 11px; padding: 4px 8px; border: 0; border-radius: 4px; background: rgba(0,0,0,.55); color: #cfe; cursor: pointer; }

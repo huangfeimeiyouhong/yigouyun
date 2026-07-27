@@ -3166,11 +3166,10 @@
         grid.className = 'monitor-grid live-' + ms.layout;
         grid.innerHTML = ms.slots.map((camId, i) => {
           const cam = DB.cameras.find(c => c.id === camId);
-          const opts = monitorAllCams().map(c => `<option value="${c.id}" ${c.id === camId ? 'selected' : ''}>${c.name}</option>`).join('');
           return `<div class="monitor-panel" draggable="true" data-camid="${camId}" data-idx="${i}" ondragstart="monitorDragStart(${i})" ondragover="event.preventDefault()" ondrop="monitorDrop(${i})">
             <canvas width="640" height="360"></canvas>
             <div class="panel-bar"><span class="drag" title="拖动调整播放顺序">&#10303;</span>
-              <select onchange="monitorBindSlot(${i}, this.value)">${opts}</select>
+              <span class="cam-name">${cam ? cam.name : ''}</span>
               <span class="status-chip">${cam ? cam.status : ''}</span></div>
             <div class="panel-actions">
               <button onclick="monitorScreenshot('${camId}')">截图</button>
