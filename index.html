@@ -3161,6 +3161,14 @@
         } else {
           drawMonitorScene(ctx, cv.width, cv.height, cam, sec, { watermark: ms.watermark, rec: rec, playback: isPlayback, timeStr: timeStr });
         }
+        if (ms.carousel && ms.layout === 1) {
+          const W = cv.width, H = cv.height;
+          ctx.fillStyle = '#ff4d4f'; ctx.beginPath(); ctx.arc(W - 86, 22, 5, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#fff'; ctx.font = '13px sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+          ctx.fillText('自动轮播', W - 74, 26);
+          ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.font = '12px monospace'; ctx.textAlign = 'right';
+          ctx.fillText('第 ' + ((ms.offset % ms.order.length) + 1) + ' / ' + ms.order.length + ' 路', W - 12, 48);
+        }
       });
     }
     function startMonitorLoop() { stopMonitorLoop(); __monitorLast = 0; __monitorRAF = requestAnimationFrame(monitorLoop); }
@@ -3283,8 +3291,15 @@
     }
 
     // ----- 监控控件交互 -----
-    window.monitorSetLayout = function(n) { const ms = window.monitorState; ms.layout = n; ms.offset = 0; monitorRebuildSlots(); monitorRenderToolbar(); monitorRenderGrid(); };
-    window.monitorToggleCarousel = function() { const ms = window.monitorState; ms.carousel = !ms.carousel; monitorRenderToolbar(); if (ms.carousel) startMonitorCarousel(); else stopMonitorCarousel(); };
+    window.monitorSetLayout = function(n) { const ms = window.monitorState; if (ms.carousel) { ms.carousel = false; stopMonitorCarousel(); } ms.layout = n; ms.offset = 0; monitorRebuildSlots(); monitorRenderToolbar(); monitorRenderGrid(); };
+    window.monitorToggleCarousel = function() {
+      const ms = window.monitorState;
+      ms.carousel = !ms.carousel;
+      if (ms.carousel) { ms._preLayout = ms.layout; ms.layout = 1; ms.offset = 0; }
+      else { ms.layout = ms._preLayout || 4; ms.offset = 0; }
+      monitorRebuildSlots(); monitorRenderToolbar(); monitorRenderGrid();
+      if (ms.carousel) startMonitorCarousel(); else stopMonitorCarousel();
+    };
     window.monitorSetInterval = function(sec) { const ms = window.monitorState; ms.carouselInterval = Number(sec); if (ms.carousel) { stopMonitorCarousel(); startMonitorCarousel(); } };
     window.monitorToggleWatermark = function() { const ms = window.monitorState; ms.watermark = !ms.watermark; monitorRenderToolbar(); if (ms.mode === 'playback') monitorDrawThumbs(); };
     window.monitorSetMode = function(m) { const ms = window.monitorState; ms.mode = m; if (m === 'playback' && !ms.playback.camId) ms.playback.camId = ms.slots[0] || monitorAllCams()[0].id; monitorRenderToolbar(); monitorRenderGrid(); if (m === 'playback') { monitorDrawThumbs(); document.getElementById('playbackStrip').style.display = 'flex'; } };
