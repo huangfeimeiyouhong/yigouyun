@@ -52,6 +52,11 @@
 .monitor-panel { background: #05140d; border-radius: 8px; overflow: hidden; position: relative; border: 1px solid #0c2a1c; }
 .monitor-panel.playback { grid-column: 1 / -1; }
 .monitor-panel canvas { display: block; width: 100%; aspect-ratio: 16 / 9; background: #05140d; }
+.monitor-video { display: block; width: 100%; aspect-ratio: 16 / 9; background: #000; object-fit: cover; }
+.monitor-panel .sim-badge { position: absolute; top: 6px; right: 8px; font-size: 11px; color: #fff; background: rgba(214,48,49,.85); padding: 2px 8px; border-radius: 10px; display: flex; align-items: center; gap: 4px; pointer-events: none; }
+.monitor-panel .sim-badge .dot { width: 6px; height: 6px; border-radius: 50%; background: #fff; animation: simPulse 1.2s infinite; }
+@keyframes simPulse { 0%,100% { opacity: 1; } 50% { opacity: .3; } }
+.monitor-panel .sim-wm { position: absolute; right: 10px; top: 34px; font-size: 13px; color: rgba(255,255,255,.5); font-family: monospace; pointer-events: none; }
 .panel-bar { position: absolute; top: 0; left: 0; right: 0; display: flex; align-items: center; gap: 6px; padding: 6px 8px; background: linear-gradient(rgba(0,0,0,.5), transparent); font-size: 12px; color: #cfe; }
 .panel-bar select { font-size: 12px; background: #0d2a1c; color: #cfe; border: 1px solid #1f5a3a; border-radius: 4px; padding: 2px 4px; max-width: 55%; }
 .panel-bar .cam-name { font-size: 13px; font-weight: 600; color: #9effa0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 55%; }

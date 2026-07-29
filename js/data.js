@@ -123,7 +123,7 @@ const MOCK_DATA = {
 
   // 视频监控（监管用户查看）
   cameras: [
-    { id: 'CAM001', name: '后厨主操作区', canteenId: 1, location: '第一食堂后厨', status: '离线', rtsp: 'rtsp://192.168.1.201/stream1', resolution: '1920x1080', direction: '俯视' },
+    { id: 'CAM001', name: '后厨主操作区', canteenId: 1, location: '第一食堂后厨', status: '在线', rtsp: 'rtsp://192.168.1.201/stream1', resolution: '1920x1080', direction: '俯视' },
     { id: 'CAM002', name: '备餐区', canteenId: 1, location: '第一食堂备餐间', status: '离线', rtsp: 'rtsp://192.168.1.202/stream1', resolution: '1920x1080', direction: '侧视' },
     { id: 'CAM003', name: '窗口区', canteenId: 2, location: '第二食堂打餐窗口', status: '离线', rtsp: 'rtsp://192.168.2.201/stream1', resolution: '1280x720', direction: '正面' },
     { id: 'CAM004', name: '仓库监控', canteenId: 1, location: '第一食堂仓库A区', status: '离线', rtsp: 'rtsp://192.168.1.203/stream1', resolution: '1920x1080', direction: '俯视' },

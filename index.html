@@ -3063,6 +3063,10 @@
       carousel: false, carouselInterval: 5, watermark: true, dragFrom: -1,
       playback: { camId: null, date: new Date().toISOString().slice(0, 10), start: '08:00', end: '09:00', speed: 1, pos: 0, playing: false }
     };
+    // 模拟在线播放的视频源（第一个窗口用真实视频内容冒充实时画面）
+    window.MONITOR_SIM_VIDEO = 'assets/videos/demo-cam001.mp4';
+    window.MONITOR_SIM_SLOT = 0; // 第几个窗口（0 = 第一个）显示模拟视频
+
     let __monitorRAF = null, __monitorTimer = null, __monitorLast = 0;
 
     function monitorAllCams() {
@@ -3226,11 +3230,18 @@
         grid.className = 'monitor-grid live-' + ms.layout;
         grid.innerHTML = ms.slots.map((camId, i) => {
           const cam = DB.cameras.find(c => c.id === camId);
+          const isSim = (i === window.MONITOR_SIM_SLOT) && window.MONITOR_SIM_VIDEO;
+          const media = isSim
+            ? `<video class="monitor-video" src="${window.MONITOR_SIM_VIDEO}" autoplay muted loop playsinline></video><div class="sim-badge"><span class="dot"></span>在线（模拟）</div><div class="sim-wm">易购云食安 · ${cam ? cam.name : ''}</div>`
+            : `<canvas width="640" height="360"></canvas>`;
+          const chip = isSim
+            ? `<span class="status-chip on">在线</span>`
+            : `<span class="status-chip ${cam && cam.status === '离线' ? 'off' : 'on'}">${cam ? cam.status : ''}</span>`;
           return `<div class="monitor-panel" draggable="true" data-camid="${camId}" data-idx="${i}" ondragstart="monitorDragStart(${i})" ondragover="event.preventDefault()" ondrop="monitorDrop(${i})">
-            <canvas width="640" height="360"></canvas>
+            ${media}
             <div class="panel-bar"><span class="drag" title="拖动调整播放顺序">&#10303;</span>
               <span class="cam-name">${cam ? cam.name : ''}</span>
-              <span class="status-chip ${cam && cam.status === '离线' ? 'off' : 'on'}">${cam ? cam.status : ''}</span></div>
+              ${chip}</div>
             <div class="panel-actions">
               <button onclick="monitorScreenshot('${camId}')">截图</button>
               <button onclick="monitorClip('${camId}')">片段下载</button>
@@ -3334,7 +3345,17 @@
     };
     window.monitorScreenshot = function(camId) {
       const panel = document.querySelector('#monitorGrid .monitor-panel[data-camid="' + camId + '"]'); if (!panel) return;
-      const cv = panel.querySelector('canvas'); const url = cv.toDataURL('image/png');
+      const cv = panel.querySelector('canvas');
+      let url;
+      if (cv) {
+        url = cv.toDataURL('image/png');
+      } else {
+        const v = panel.querySelector('video'); if (!v) return;
+        const tcv = document.createElement('canvas');
+        tcv.width = v.videoWidth || 640; tcv.height = v.videoHeight || 360;
+        tcv.getContext('2d').drawImage(v, 0, 0, tcv.width, tcv.height);
+        url = tcv.toDataURL('image/png');
+      }
       const a = document.createElement('a'); a.href = url; a.download = '截图_' + (camId || 'cam') + '_' + Date.now() + '.png'; a.click();
       showToast('截图已保存', 'success');
     };
@@ -3345,8 +3366,21 @@
     };
     window.monitorClip = function(camId) {
       const panel = document.querySelector('#monitorGrid .monitor-panel[data-camid="' + camId + '"]'); if (!panel) return;
+      const v = panel.querySelector('video');
       const cv = panel.querySelector('canvas');
-      if (!cv.captureStream) { showToast('当前浏览器不支持片段录制', 'error'); return; }
+      if (v && v.captureStream) {
+        try {
+          const stream = v.captureStream(25);
+          const rec = new MediaRecorder(stream, { mimeType: 'video/webm' });
+          const chunks = [];
+          rec.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
+          rec.onstop = () => { const blob = new Blob(chunks, { type: 'video/webm' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = '片段_' + (camId || 'cam') + '_' + Date.now() + '.webm'; a.click(); setTimeout(() => URL.revokeObjectURL(url), 5000); showToast('片段下载完成', 'success'); };
+          rec.start(); showToast('正在录制片段(10秒)...', 'info');
+          setTimeout(() => { if (rec.state !== 'inactive') rec.stop(); }, 10000);
+          return;
+        } catch (e) { /* 回退到 canvas 录制 */ }
+      }
+      if (!cv || !cv.captureStream) { showToast('当前浏览器不支持片段录制', 'error'); return; }
       try {
         const stream = cv.captureStream(25);
         const rec = new MediaRecorder(stream, { mimeType: 'video/webm' });
