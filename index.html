@@ -3065,7 +3065,7 @@
     };
     // 模拟在线播放的视频源（第一个窗口用真实视频内容冒充实时画面）
     window.MONITOR_SIM_VIDEO = 'assets/videos/demo-cam001.mp4';
-    window.MONITOR_SIM_SLOT = 0; // 第几个窗口（0 = 第一个）显示模拟视频
+    window.MONITOR_SIM_CAM = 'CAM001'; // 哪个摄像头显示模拟视频（拖动/轮播时会跟随该摄像头）
 
     let __monitorRAF = null, __monitorTimer = null, __monitorLast = 0;
 
@@ -3165,7 +3165,9 @@
       if (!grid) return;
       const ms = window.monitorState;
       const dt = __monitorLast ? (ts - __monitorLast) / 1000 : 0; __monitorLast = ts;
-      if (ms.mode === 'playback' && ms.playback.playing) {
+      const pbPanel = ms.mode === 'playback' ? grid.querySelector('.monitor-panel') : null;
+      const pbIsVideo = !!(pbPanel && pbPanel.querySelector('video'));
+      if (ms.mode === 'playback' && ms.playback.playing && !pbIsVideo) {
         const total = playbackTotalSec();
         ms.playback.pos += dt * ms.playback.speed / total;
         if (ms.playback.pos >= 1) { ms.playback.pos = 1; ms.playback.playing = false; const b = document.querySelector('.pb-controls .btn-primary'); if (b) b.textContent = '播放'; }
@@ -3173,7 +3175,12 @@
       }
       const panels = grid.querySelectorAll('.monitor-panel');
       panels.forEach((panel, idx) => {
-        const cv = panel.querySelector('canvas'); if (!cv) return;
+        const cv = panel.querySelector('canvas');
+        const timeEl = panel.querySelector('.sim-time');
+        if (timeEl) timeEl.textContent = new Date().toLocaleString('zh-CN');
+        const wmEl = panel.querySelector('.sim-wm');
+        if (wmEl) wmEl.style.display = ms.watermark ? '' : 'none';
+        if (!cv) return;
         const ctx = cv.getContext('2d');
         const cam = DB.cameras.find(c => c.id === panel.dataset.camid);
         let sec, timeStr, isPlayback = false, rec = true;
@@ -3213,8 +3220,10 @@
       if (ms.mode === 'playback') {
         grid.className = 'monitor-grid live-1';
         const cam = DB.cameras.find(c => c.id === ms.playback.camId) || DB.cameras[0];
+        // 只有 CAM001（后厨主操作区）才使用真实演示视频
+        const useVid = !!window.MONITOR_SIM_VIDEO && cam && cam.id === 'CAM001';
         grid.innerHTML = `<div class="monitor-panel playback" data-camid="${cam ? cam.id : ''}">
-          <canvas width="640" height="360"></canvas>
+          ${useVid ? `<video class="monitor-video" src="${window.MONITOR_SIM_VIDEO}" preload="auto" playsinline muted onerror="console && console.error('playback video load error', this.error)"></video><div class="sim-wm">易购云食安 · ${cam ? cam.name : ''}</div><div class="sim-time">${new Date().toLocaleString('zh-CN')}</div>` : `<canvas width="640" height="360"></canvas>`}
           <div class="panel-bar"><span style="color:#ff7a7a">● 回放</span><span>${cam ? cam.name : ''}</span><span class="status-chip">${ms.playback.date} ${ms.playback.start}-${ms.playback.end} · ${ms.playback.speed}x</span></div>
           <div class="panel-actions">
             <button onclick="monitorScreenshot('${cam ? cam.id : ''}')">截图</button>
@@ -3222,6 +3231,7 @@
             <button onclick="monitorFullscreen(this.closest('.monitor-panel'))">全屏</button>
           </div>
         </div>`;
+        if (useVid) { const v = grid.querySelector('video'); if (v) attachPlaybackVideo(v); }
         const strip = document.getElementById('playbackStrip');
         if (strip) strip.innerHTML = monitorAllCams().map(c => `<div class="playback-thumb ${c.id === (cam ? cam.id : '') ? 'active' : ''}" onclick="monitorPBSelect('${c.id}')">
           <canvas width="160" height="90" data-thumb="${c.id}"></canvas>
@@ -3230,9 +3240,9 @@
         grid.className = 'monitor-grid live-' + ms.layout;
         grid.innerHTML = ms.slots.map((camId, i) => {
           const cam = DB.cameras.find(c => c.id === camId);
-          const isSim = (i === window.MONITOR_SIM_SLOT) && window.MONITOR_SIM_VIDEO;
+          const isSim = (camId === window.MONITOR_SIM_CAM) && window.MONITOR_SIM_VIDEO;
           const media = isSim
-            ? `<video class="monitor-video" src="${window.MONITOR_SIM_VIDEO}" autoplay muted loop playsinline></video><div class="sim-badge"><span class="dot"></span>在线（模拟）</div><div class="sim-wm">易购云食安 · ${cam ? cam.name : ''}</div>`
+            ? `<video class="monitor-video" src="${window.MONITOR_SIM_VIDEO}" autoplay muted loop playsinline></video><div class="sim-wm">易购云食安 · ${cam ? cam.name : ''}</div><div class="sim-time">${new Date().toLocaleString('zh-CN')}</div>`
             : `<canvas width="640" height="360"></canvas>`;
           const chip = isSim
             ? `<span class="status-chip on">在线</span>`
@@ -3282,6 +3292,34 @@
         <button class="btn-mini" onclick="monitorScreenshot('${pb.camId}')">截图</button>
         <button class="btn-mini" onclick="monitorClip('${pb.camId}')">片段下载</button>
       </div>`;
+    }
+
+    function attachPlaybackVideo(v) {
+      const pb = window.monitorState.playback;
+      v.playbackRate = pb.speed || 1;
+      v.addEventListener('loadedmetadata', function () {
+        updatePBProgressUI();
+        if (pb.playing) { v.play().catch(function(e){ console && console.error('playback auto-play failed', e); }); }
+      });
+      v.addEventListener('timeupdate', function () {
+        if (!v.duration) return;
+        pb.pos = Math.max(0, Math.min(1, v.currentTime / v.duration));
+        updatePBProgressUI();
+      });
+      v.addEventListener('ended', function () {
+        pb.playing = false;
+        const b = document.querySelector('.pb-controls .btn-primary'); if (b) b.textContent = '播放';
+      });
+      v.addEventListener('error', function () {
+        console && console.error('playback video error', v.error);
+        showToast('回放视频加载失败，请检查文件路径', 'error');
+      });
+      v.load();
+    }
+    function resetPlaybackVideo() {
+      const panel = document.querySelector('#monitorGrid .monitor-panel');
+      const v = panel && panel.querySelector('video');
+      if (v) { try { v.currentTime = 0; } catch (e) {} }
     }
 
     function renderMonitor(el) {
@@ -3343,21 +3381,45 @@
       const a = ms.offset + f, b = ms.offset + i; const o = ms.order[a]; ms.order[a] = ms.order[b]; ms.order[b] = o;
       ms.dragFrom = -1; monitorRenderGrid();
     };
+    function monitorRecorderMime() {
+      if (typeof MediaRecorder === 'undefined' || !MediaRecorder.isTypeSupported) return '';
+      const cands = ['video/mp4;codecs=avc1.42E01E,mp4a.40.2', 'video/mp4', 'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm'];
+      for (let i = 0; i < cands.length; i++) { if (MediaRecorder.isTypeSupported(cands[i])) return cands[i]; }
+      return '';
+    }
+    function monitorStartClip(stream, camId, ext) {
+      const mime = monitorRecorderMime();
+      if (!mime) { showToast('当前浏览器不支持片段录制', 'error'); return; }
+      let rec;
+      try { rec = new MediaRecorder(stream, { mimeType: mime }); }
+      catch (e) { showToast('录制初始化失败: ' + e.message, 'error'); return; }
+      const chunks = [];
+      rec.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
+      rec.onstop = () => { const blob = new Blob(chunks, { type: mime }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = '片段_' + (camId || 'cam') + '_' + Date.now() + '.' + ext; a.click(); setTimeout(() => URL.revokeObjectURL(url), 5000); showToast('片段下载完成', 'success'); };
+      rec.start(); showToast('正在录制片段(10秒)...', 'info');
+      setTimeout(() => { if (rec.state !== 'inactive') rec.stop(); }, 10000);
+    }
     window.monitorScreenshot = function(camId) {
       const panel = document.querySelector('#monitorGrid .monitor-panel[data-camid="' + camId + '"]'); if (!panel) return;
       const cv = panel.querySelector('canvas');
-      let url;
+      let tcv, ctx;
       if (cv) {
-        url = cv.toDataURL('image/png');
+        tcv = cv;
       } else {
         const v = panel.querySelector('video'); if (!v) return;
-        const tcv = document.createElement('canvas');
-        tcv.width = v.videoWidth || 640; tcv.height = v.videoHeight || 360;
-        tcv.getContext('2d').drawImage(v, 0, 0, tcv.width, tcv.height);
-        url = tcv.toDataURL('image/png');
+        if (!v.videoWidth) { showToast('视频尚未加载完成，请稍候再截图', 'error'); return; }
+        tcv = document.createElement('canvas');
+        tcv.width = v.videoWidth; tcv.height = v.videoHeight;
+        ctx = tcv.getContext('2d');
+        ctx.drawImage(v, 0, 0, tcv.width, tcv.height);
       }
-      const a = document.createElement('a'); a.href = url; a.download = '截图_' + (camId || 'cam') + '_' + Date.now() + '.png'; a.click();
-      showToast('截图已保存', 'success');
+      try {
+        const url = tcv.toDataURL('image/png');
+        const a = document.createElement('a'); a.href = url; a.download = '截图_' + (camId || 'cam') + '_' + Date.now() + '.png'; a.click();
+        showToast('截图已保存', 'success');
+      } catch (e) {
+        showToast('截图失败（画布受限）：请通过本地服务器打开本页再试', 'error');
+      }
     };
     window.monitorScreenshotAll = function() {
       const ms = window.monitorState; const ids = ms.mode === 'playback' ? [ms.playback.camId] : ms.slots.slice();
@@ -3368,28 +3430,12 @@
       const panel = document.querySelector('#monitorGrid .monitor-panel[data-camid="' + camId + '"]'); if (!panel) return;
       const v = panel.querySelector('video');
       const cv = panel.querySelector('canvas');
-      if (v && v.captureStream) {
-        try {
-          const stream = v.captureStream(25);
-          const rec = new MediaRecorder(stream, { mimeType: 'video/webm' });
-          const chunks = [];
-          rec.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
-          rec.onstop = () => { const blob = new Blob(chunks, { type: 'video/webm' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = '片段_' + (camId || 'cam') + '_' + Date.now() + '.webm'; a.click(); setTimeout(() => URL.revokeObjectURL(url), 5000); showToast('片段下载完成', 'success'); };
-          rec.start(); showToast('正在录制片段(10秒)...', 'info');
-          setTimeout(() => { if (rec.state !== 'inactive') rec.stop(); }, 10000);
-          return;
-        } catch (e) { /* 回退到 canvas 录制 */ }
-      }
-      if (!cv || !cv.captureStream) { showToast('当前浏览器不支持片段录制', 'error'); return; }
-      try {
-        const stream = cv.captureStream(25);
-        const rec = new MediaRecorder(stream, { mimeType: 'video/webm' });
-        const chunks = [];
-        rec.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
-        rec.onstop = () => { const blob = new Blob(chunks, { type: 'video/webm' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = '片段_' + (camId || 'cam') + '_' + Date.now() + '.webm'; a.click(); setTimeout(() => URL.revokeObjectURL(url), 5000); showToast('片段下载完成', 'success'); };
-        rec.start(); showToast('正在录制片段(10秒)...', 'info');
-        setTimeout(() => { if (rec.state !== 'inactive') rec.stop(); }, 10000);
-      } catch (e) { showToast('录制失败: ' + e.message, 'error'); }
+      const mime = monitorRecorderMime();
+      if (!mime) { showToast('当前浏览器不支持片段录制', 'error'); return; }
+      const ext = mime.indexOf('mp4') >= 0 ? 'mp4' : 'webm';
+      if (v && v.captureStream) { try { monitorStartClip(v.captureStream(25), camId, ext); return; } catch (e) {} }
+      if (cv && cv.captureStream) { try { monitorStartClip(cv.captureStream(25), camId, ext); return; } catch (e) {} }
+      showToast('当前浏览器不支持片段录制', 'error');
     };
     window.monitorFullscreen = function(el) { if (el && el.requestFullscreen) el.requestFullscreen(); };
     window.monitorFilterCanteen = function(val) {
@@ -3399,12 +3445,39 @@
       if (ms.mode === 'playback') ms.playback.camId = ms.slots[0];
       monitorRenderGrid(); if (ms.mode === 'playback') monitorDrawThumbs();
     };
-    window.monitorPBDate = function(d) { window.monitorState.playback.date = d; monitorRenderPlaybackBar(); };
-    window.monitorPBStart = function(t) { window.monitorState.playback.start = t; window.monitorState.playback.pos = 0; monitorRenderPlaybackBar(); };
-    window.monitorPBEnd = function(t) { window.monitorState.playback.end = t; window.monitorState.playback.pos = 0; monitorRenderPlaybackBar(); };
-    window.monitorPBSetSpeed = function(s) { window.monitorState.playback.speed = s; const seg = document.getElementById('segSpeed'); if (seg) seg.querySelectorAll('button').forEach(b => b.classList.toggle('active', Number(b.textContent.replace('x', '')) === s)); };
-    window.monitorPBToggle = function() { const pb = window.monitorState.playback; pb.playing = !pb.playing; const b = document.querySelector('.pb-controls .btn-primary'); if (b) b.textContent = pb.playing ? '暂停' : '播放'; };
-    window.monitorPBSeek = function(frac) { window.monitorState.playback.pos = Math.max(0, Math.min(1, frac)); const tt = document.getElementById('pbTime'); if (tt) tt.textContent = monitorPBClockText(); };
+    window.monitorPBDate = function(d) { window.monitorState.playback.date = d; resetPlaybackVideo(); monitorRenderPlaybackBar(); };
+    window.monitorPBStart = function(t) { window.monitorState.playback.start = t; window.monitorState.playback.pos = 0; resetPlaybackVideo(); monitorRenderPlaybackBar(); };
+    window.monitorPBEnd = function(t) { window.monitorState.playback.end = t; window.monitorState.playback.pos = 0; resetPlaybackVideo(); monitorRenderPlaybackBar(); };
+    window.monitorPBSetSpeed = function(s) {
+      window.monitorState.playback.speed = s;
+      const panel = document.querySelector('#monitorGrid .monitor-panel');
+      const v = panel && panel.querySelector('video');
+      if (v) v.playbackRate = s;
+      const seg = document.getElementById('segSpeed'); if (seg) seg.querySelectorAll('button').forEach(b => b.classList.toggle('active', Number(b.textContent.replace('x', '')) === s));
+    };
+    window.monitorPBToggle = function() {
+      const pb = window.monitorState.playback;
+      pb.playing = !pb.playing;
+      const panel = document.querySelector('#monitorGrid .monitor-panel');
+      const v = panel && panel.querySelector('video');
+      if (v) {
+        if (pb.playing) {
+          v.play().then(function(){}).catch(function(e){
+            console && console.error('playback play failed', e);
+            pb.playing = false;
+            showToast('视频播放失败：' + (e && e.message ? e.message : '未知错误'), 'error');
+          });
+        } else { v.pause(); }
+      }
+      const b = document.querySelector('.pb-controls .btn-primary'); if (b) b.textContent = pb.playing ? '暂停' : '播放';
+    };
+    window.monitorPBSeek = function(frac) {
+      window.monitorState.playback.pos = Math.max(0, Math.min(1, frac));
+      const tt = document.getElementById('pbTime'); if (tt) tt.textContent = monitorPBClockText();
+      const panel = document.querySelector('#monitorGrid .monitor-panel');
+      const v = panel && panel.querySelector('video');
+      if (v && v.duration) v.currentTime = window.monitorState.playback.pos * v.duration;
+    };
     window.monitorPBSelect = function(camId) { window.monitorState.playback.camId = camId; monitorRenderGrid(); monitorDrawThumbs(); monitorRenderPlaybackBar(); };
 
     // ===== 食安数据（监管用户） =====
