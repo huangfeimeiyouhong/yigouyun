@@ -256,6 +256,8 @@
     };
 
     let selectedRole = 'admin';
+    document.getElementById('username').value = roleHints[selectedRole].defaultUser;
+    document.getElementById('password').value = selectedRole === 'admin' ? 'admin123' : '123456';
 
     document.querySelectorAll('.role-tag').forEach(tag => {
       tag.addEventListener('click', () => {
